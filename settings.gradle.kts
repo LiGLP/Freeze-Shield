@@ -75,6 +75,12 @@ if (gradle.startParameter.isBuildScan) {
 rootProject.name = "freezeshield"
 include("common")
 include("bukkit")
+include(":antiesp:logging")
+include(":antiesp:locatables")
+include(":antiesp:leafpile")
+include(":antiesp:core")
+include(":antiesp:packetevents")
+include(":antiesp:paper")
 include("fabric")
 include(":fabric:shared")
 include(":fabric:intermediary")

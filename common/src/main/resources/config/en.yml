@@ -31,6 +31,13 @@ client-brand:
     # Setting this option to false will allow said clients to connect to the server. Disable this at your own risk.
     disconnect-blacklisted-forge-versions: true
 
+anti-esp:
+    # Hides entities, players and containers (chests, signs, ...) that a player can't see behind walls,
+    # so ESP and X-ray style cheats can't show them. Uses the bundled RaycastedAntiESP.
+    # Only works on Paper 1.21.4+ (or forks like Purpur/Folia) with Java 21; it turns itself off elsewhere.
+    # Its own settings are in the antiesp folder, and /antiesp manages it in game. Needs a restart to apply.
+    enabled: true
+
 client-detection:
     # Detects blacklisted client mods (like Meteor Client) shortly after a player joins, even if they spoof
     # their brand. Grim asks the game to resolve the mod's keybinds, which only works if the mod is installed.

@@ -10,6 +10,9 @@ plugins {
     id("xyz.jpenilla.run-paper") version "3.0.0-beta.1"
 }
 
+// The anti-ESP jar is embedded into this jar, see shadowJar below
+evaluationDependsOn(":antiesp:paper")
+
 repositories {
     val localOverride = if (BuildConfig.mavenLocalOverride) mavenLocal() else null
 
@@ -163,6 +166,9 @@ bukkit {
         "postgresql-jdbc",
         "mongodb-driver",
         "jedis",
+        // Optional integrations of the embedded anti-ESP
+        "FancyNpcs",
+        "FancyHolograms",
     )
 
     permissions {
@@ -213,6 +219,17 @@ bukkit {
 
         register("freezeshield.disabled") {
             description = "Disable Grim checks while keeping player state tracked"
+            default = Permission.Default.FALSE
+        }
+
+        // Embedded anti-ESP (RaycastedAntiESP)
+        register("raycastedantiesp.command") {
+            description = "Use the /raycastedantiesp (/antiesp) command"
+            default = Permission.Default.OP
+        }
+
+        register("raycastedantiesp.bypass") {
+            description = "Bypass the anti-ESP, entities and chests are never hidden. Needs a restart to apply"
             default = Permission.Default.FALSE
         }
 
@@ -274,6 +291,15 @@ tasks {
     }
 
     shadowJar {
+        // The embedded anti-ESP (RaycastedAntiESP, AGPL-3.0) as a nested jar, loaded by AntiEspLoader on Paper 1.21.4+
+        // It uses Freeze Shield's PacketEvents, so keep all of PacketEvents instead of only what Grim references
+        minimize {
+            exclude(dependency("com.github.retrooper:.*"))
+        }
+        from(project(":antiesp:paper").tasks.named("shadowJar")) {
+            into("antiesp")
+        }
+
         exclude("META-INF/services/javax.annotation.processing.Processor")
 
         if (!BuildConfig.shadePE) {

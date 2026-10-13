@@ -23,6 +23,17 @@ reported to staff and kicked after a short random delay with a normal-looking ti
 - Limits: modified or renamed Meteor builds and anti-detection mods can avoid it. Wurst can't be detected this way,
   because it registers no vanilla keybinds or translations. It is caught by its behaviour instead.
 
+### Anti-ESP (Paper 1.21.4+)
+Freeze Shield bundles [RaycastedAntiESP](https://github.com/Cubicake/RaycastedAntiESP). It hides entities, players
+and containers such as chests and signs that a player can't actually see behind walls, so ESP, tracers and
+chest-finding cheats have nothing to show. Hidden things pop back in as soon as they come into view.
+
+- Runs automatically on Paper 1.21.4+ (and forks like Purpur and Folia) with Java 21. On other servers it switches itself off and the rest of Freeze Shield works as usual.
+- Turn it off with `anti-esp.enabled: false` in `config.yml`. Its own settings live in `plugins/FreezeShield/antiesp/`.
+- In game: `/antiesp` (permission `raycastedantiesp.command`). Players with `raycastedantiesp.bypass` are never affected.
+- Freeze Shield keeps its movement and combat checks in sync with what the anti-ESP hides, so hidden entities and chests don't cause false flags.
+- `/raycastedantiespCredits` shows its copyright notice and source link, which its license requires to stay available to all players.
+
 ### New checks
 
 | Check | Detects | Typical modules |
@@ -73,7 +84,15 @@ Permissions use the `freezeshield.` prefix, for example `freezeshield.alerts`, `
 - **[GrimAC](https://github.com/GrimAnticheat/Grim)** by the GrimAnticheat team and contributors. Freeze Shield is a
   modified version of Grim, and the vast majority of the code is theirs.
 - **[NoCheatPlus](https://github.com/Updated-NoCheatPlus/NoCheatPlus)**: the ideas behind `SignA` and `WallHit` come from its checks.
+- **[RaycastedAntiESP](https://github.com/Cubicake/RaycastedAntiESP)**, copyright © 2025-2026 Cubicake and Contributors:
+  the bundled anti-ESP in [`antiesp/`](antiesp), together with its libraries CubiLogging, Locatables and
+  ParallelepipedLeafPile (Spottedleaf's concurrency utilities). It's modified to run inside Freeze Shield and to keep
+  the anticheat in sync; the upstream commits used are listed in [`antiesp/UPSTREAM-VERSION.txt`](antiesp/UPSTREAM-VERSION.txt).
+- **[StrokkCommands](https://github.com/Strokkur424/StrokkCommands)** (LGPL) for the anti-ESP's commands.
 - **[PacketEvents](https://github.com/retrooper/packetevents)** for packet handling.
 
-Freeze Shield is licensed under the **GNU General Public License v3.0**, the same as GrimAC. See [LICENSE](LICENSE).
-This is a modified version of GrimAC; changes are listed in the git history.
+Freeze Shield's own code and the GrimAC code are licensed under the **GNU General Public License v3.0**, see
+[LICENSE](LICENSE). The bundled anti-ESP is licensed under the **GNU Affero General Public License v3.0 only**,
+see [antiesp/LICENSE](antiesp/LICENSE). GPLv3 section 13 allows combining the two; because of the AGPL part, if you
+run a **modified** Freeze Shield on a server, you must offer your modified source code to the players on that
+server. This is a modified version of GrimAC and RaycastedAntiESP; changes are listed in the git history.
