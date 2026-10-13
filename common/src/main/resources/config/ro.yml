@@ -18,8 +18,6 @@ alerts:
 verbose:
     print-to-console: false
 
-check-for-updates: true
-
 client-brand:
     # Acest lucru înseamnă că nu va transmite operatorilor brandul clientului dacă brandul se potrivește cu regex-urile de mai jos
     ignored-clients:

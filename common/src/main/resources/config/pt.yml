@@ -18,8 +18,6 @@ alerts:
 verbose:
     print-to-console: false
 
-check-for-updates: true
-
 client-brand:
     # Isso signifia que, caso a marca do cliente seja igual às listadas abaixo, não será notificado aos
     # administradores.

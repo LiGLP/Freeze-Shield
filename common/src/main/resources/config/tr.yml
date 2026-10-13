@@ -18,8 +18,6 @@ alerts:
 verbose:
     print-to-console: false
 
-check-for-updates: true
-
 client-brand:
     # Bu, giriş yapılan clientin aşağıdaki regex'lerle eşleşmesi durumunda markalarını operatörlere yayınlamayacağı anlamına gelir
     ignored-clients:

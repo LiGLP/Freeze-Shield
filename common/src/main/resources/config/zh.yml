@@ -18,9 +18,6 @@ alerts:
 verbose:
     # 是否在控制台中打印verbose信息
     print-to-console: false
-# 是否检查更新
-check-for-updates: true
-
 client-brand:
     # 这意味着如果客户端型号匹配以下正则表达式，它将不会将其客户端版本显示在聊天栏中
     ignored-clients:

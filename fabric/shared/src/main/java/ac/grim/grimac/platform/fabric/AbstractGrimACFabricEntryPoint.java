@@ -1,7 +1,6 @@
 package ac.grim.grimac.platform.fabric;
 
 import ac.grim.grimac.GrimAPI;
-import ac.grim.grimac.platform.fabric.initables.FabricBStats;
 import ac.grim.grimac.platform.fabric.initables.FabricLuckPermsInitable;
 import ac.grim.grimac.platform.fabric.initables.FabricTickEndEvent;
 import ac.grim.grimac.platform.fabric.inject.FabricMinecraftServerHandle;
@@ -47,7 +46,6 @@ public abstract class AbstractGrimACFabricEntryPoint<P extends AbstractGrimACFab
 
         GrimAPI.INSTANCE.load(
                 platformLoader,
-                new FabricBStats(),
                 new FabricTickEndEvent(),
                 new FabricLuckPermsInitable()
         );

@@ -18,8 +18,6 @@ alerts:
 verbose:
     print-to-console: false
 
-check-for-updates: true
-
 client-brand:
     # Это означает, что он не будет транслировать свой бренд операторам, если бренд соответствует следующим регексам
     ignored-clients:

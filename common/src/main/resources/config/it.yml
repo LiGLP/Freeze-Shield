@@ -19,8 +19,6 @@ verbose:
     # Mostra dettagli su console?
     print-to-console: false
 
-check-for-updates: true
-
 client-brand:
     # Ignora i seguenti client nella trasmissione del marchio agli operatori
     ignored-clients:
