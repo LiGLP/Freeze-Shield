@@ -38,6 +38,12 @@ anti-esp:
     # Its own settings are in the antiesp folder, and /antiesp manages it in game. Needs a restart to apply.
     enabled: true
 
+autoclicker:
+    # AutoClickerA flags players clicking faster than this (clicks per second) for sustain-seconds in a row.
+    # Butterfly and jitter clicking reach about 20 CPS for short bursts, so stay above that.
+    max-cps: 22
+    sustain-seconds: 3
+
 client-detection:
     # Detects blacklisted client mods (like Meteor Client) shortly after a player joins, even if they spoof
     # their brand. Grim asks the game to resolve the mod's keybinds, which only works if the mod is installed.
