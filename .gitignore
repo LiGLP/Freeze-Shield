@@ -5,6 +5,8 @@
 .mtj.tmp/
 *.class
 *.jar
+# The anti-ESP's patched Configurate YAML library is committed on purpose, see antiesp/libs/README.md
+!antiesp/libs/*.jar
 *.war
 *.ear
 *.nar
