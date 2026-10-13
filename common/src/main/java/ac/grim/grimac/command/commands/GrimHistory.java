@@ -55,13 +55,13 @@ import java.util.regex.PatternSyntaxException;
 
 /**
  * <pre>
- *   /grim history &lt;target&gt;                                 → list, page 1
- *   /grim history &lt;target&gt; page &lt;P&gt;                          → list, page P
- *   /grim history &lt;target&gt; session                          → help menu
- *   /grim history &lt;target&gt; session &lt;N|latest&gt; [-d] [-v]     → detail
- *   /grim history &lt;target&gt; session &lt;N|latest&gt; page &lt;P&gt; [-d] [-v]
- *   /grim history player &lt;target&gt; ...                       → disambiguated form
- *   /grim history repair check-ids                           → in-place repair
+ *   /freezeshield history &lt;target&gt;                                 → list, page 1
+ *   /freezeshield history &lt;target&gt; page &lt;P&gt;                          → list, page P
+ *   /freezeshield history &lt;target&gt; session                          → help menu
+ *   /freezeshield history &lt;target&gt; session &lt;N|latest&gt; [-d] [-v]     → detail
+ *   /freezeshield history &lt;target&gt; session &lt;N|latest&gt; page &lt;P&gt; [-d] [-v]
+ *   /freezeshield history player &lt;target&gt; ...                       → disambiguated form
+ *   /freezeshield history repair check-ids                           → in-place repair
  * </pre>
  * {@code latest} / {@code last} / {@code l} alias the most-recent session.
  * Flags: {@code -d} raw rows, {@code -v} inline verbose, {@code --name} /
@@ -83,11 +83,11 @@ public class GrimHistory implements BuildableCommand {
         SuggestionProvider<Sender> targetSuggestions = targetSuggestions(arguments);
 
         commandManager.command(
-                commandManager.commandBuilder("grim", "grimac")
+                commandManager.commandBuilder("freezeshield", "fs")
                         .literal("history", "hist")
                         .literal("repair")
                         .literal("check-ids")
-                        .permission("grim.history.repair")
+                        .permission("freezeshield.history.repair")
                         .handler(this::handleRepairCheckIds)
         );
 
@@ -112,9 +112,9 @@ public class GrimHistory implements BuildableCommand {
             SuggestionProvider<Sender> violationPageSuggestions) {
         // Fresh builder per branch — reusing one cross-pollinates siblings.
         java.util.function.Supplier<Command.Builder<Sender>> base = () -> {
-            Command.Builder<Sender> b = commandManager.commandBuilder("grim", "grimac")
+            Command.Builder<Sender> b = commandManager.commandBuilder("freezeshield", "fs")
                     .literal("history", "hist")
-                    .permission("grim.history");
+                    .permission("freezeshield.history");
             if (withPlayerLiteral) b = b.literal("player");
             return b.required("target", StringParser.stringParser(), targetSuggestions);
         };
@@ -243,7 +243,7 @@ public class GrimHistory implements BuildableCommand {
         });
     }
 
-    /** Prints usage for {@code /grim history <target> session} without an ordinal. */
+    /** Prints usage for {@code /freezeshield history <target> session} without an ordinal. */
     private void handleSessionHelp(CommandContext<Sender> ctx, boolean viaPlayer) {
         Sender sender = ctx.sender();
         String target = ctx.get("target");
@@ -251,7 +251,7 @@ public class GrimHistory implements BuildableCommand {
         // dispatch on the same branch — a target that needed the 'player'
         // escape hatch (e.g. someone named 'repair') would route through
         // the wrong literal if the help printed the bare form.
-        String addressPrefix = "/grim history " + (viaPlayer ? "player " : "");
+        String addressPrefix = "/freezeshield history " + (viaPlayer ? "player " : "");
         sender.sendMessage(Component.text()
                 .append(Component.text(addressPrefix, NamedTextColor.GRAY))
                 .append(Component.text(target, NamedTextColor.WHITE))
@@ -527,7 +527,7 @@ public class GrimHistory implements BuildableCommand {
             runOnGlobalThread(() -> reportRepairComplete(sender, prewarmed, plan, result));
         } catch (Exception e) {
             runOnGlobalThread(() -> logBoth(sender, Component.text("Repair failed: " + e.getMessage(), NamedTextColor.RED)));
-            LogUtil.error("v1 check-id repair failed via /grim history repair check-ids", e);
+            LogUtil.error("v1 check-id repair failed via /freezeshield history repair check-ids", e);
         } finally {
             REPAIR_RUNNING.set(false);
         }

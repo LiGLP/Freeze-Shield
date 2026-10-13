@@ -14,9 +14,9 @@ public class GrimHelp implements BuildableCommand {
     @Override
     public void register(CommandManager<Sender> commandManager, CloudPlatformCommandArguments arguments) {
         commandManager.command(
-                commandManager.commandBuilder("grim", "grimac")
+                commandManager.commandBuilder("freezeshield", "fs")
                         .literal("help", Description.of("Display help information"))
-                        .permission("grim.help")
+                        .permission("freezeshield.help")
                         .handler(this::handleHelp)
         );
     }

@@ -30,9 +30,9 @@ public class GrimList implements BuildableCommand {
 
     @Override
     public void register(CommandManager<Sender> commandManager, CloudPlatformCommandArguments arguments) {
-        commandManager.command(commandManager.commandBuilder("grim", "grimac")
+        commandManager.command(commandManager.commandBuilder("freezeshield", "fs")
                 .literal("list")
-                .permission("grim.list")
+                .permission("freezeshield.list")
                 .required("list", StringParser.stringParser(), SUGGESTIONS)
                 .handler(commandContext -> handleList(commandContext.sender(), commandContext.getOrDefault("list", "?").toLowerCase()))
                 .build());

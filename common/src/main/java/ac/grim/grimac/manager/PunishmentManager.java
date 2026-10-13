@@ -136,7 +136,7 @@ public class PunishmentManager implements ConfigReloadable {
                 final int violationCount = group.violations.size();
                 for (ParsedCommand command : group.commands) {
                     @Nullable Set<@Nullable PlatformPlayer> verboseListeners = null;
-                    // Verbose that prints all flags: /grim verbose subscribers get EVERY flag, not just thresholded
+                    // Verbose that prints all flags: /freezeshield verbose subscribers get EVERY flag, not just thresholded
                     // alerts. The verbose string is only rendered (safeGet) when there are listeners, so the flag
                     // path stays lazy when nobody is subscribed.
                     if (command.command.equals("[alert]") && GrimAPI.INSTANCE.getAlertManager().hasVerboseListeners()) {

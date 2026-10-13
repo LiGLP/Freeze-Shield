@@ -133,10 +133,10 @@ dependencies {
 }
 
 bukkit {
-    name = "GrimAC"
-    author = "GrimAC"
+    name = "FreezeShield"
+    author = "LiGLP"
     main = "ac.grim.grimac.platform.bukkit.GrimACBukkitLoaderPlugin"
-    website = "https://grim.ac/"
+    website = "https://github.com/LiGLP/Freeze-Shield"
     apiVersion = "1.13"
     foliaSupported = true
 
@@ -166,73 +166,73 @@ bukkit {
     )
 
     permissions {
-        register("grim.alerts") {
+        register("freezeshield.alerts") {
             description = "Receive alerts for violations"
             default = Permission.Default.OP
         }
 
-        register("grim.alerts.enable-on-join") {
+        register("freezeshield.alerts.enable-on-join") {
             description = "Enable alerts on join"
             default = Permission.Default.OP
         }
 
-        register("grim.performance") {
+        register("freezeshield.performance") {
             description = "Check performance metrics"
             default = Permission.Default.OP
         }
 
-        register("grim.profile") {
+        register("freezeshield.profile") {
             description = "Check user profile"
             default = Permission.Default.OP
         }
 
-        register("grim.brand") {
+        register("freezeshield.brand") {
             description = "Show client brands on join"
             default = Permission.Default.OP
         }
 
-        register("grim.brand.enable-on-join") {
+        register("freezeshield.brand.enable-on-join") {
             description = "Enable showing client brands on join"
             default = Permission.Default.OP
         }
 
-        register("grim.sendalert") {
+        register("freezeshield.sendalert") {
             description = "Send cheater alert"
             default = Permission.Default.OP
         }
 
-        register("grim.nosetback") {
+        register("freezeshield.nosetback") {
             description = "Disable setback"
             default = Permission.Default.FALSE
         }
 
-        register("grim.nomodifypacket") {
+        register("freezeshield.nomodifypacket") {
             description = "Disable modifying packets"
             default = Permission.Default.FALSE
         }
 
-        register("grim.disabled") {
+        register("freezeshield.disabled") {
             description = "Disable Grim checks while keeping player state tracked"
             default = Permission.Default.FALSE
         }
 
-        register("grim.exempt") {
+        register("freezeshield.exempt") {
             description = "Exempt from all checks"
             default = Permission.Default.FALSE
         }
 
-        register("grim.verbose") {
+        register("freezeshield.verbose") {
             description = "Receive verbose alerts for violations"
             default = Permission.Default.OP
         }
 
-        register("grim.verbose.enable-on-join") {
+        register("freezeshield.verbose.enable-on-join") {
             description =
                 "Enable verbose alerts on join"
             default = Permission.Default.FALSE
         }
 
-        register("grim.list") {
+        register("freezeshield.list") {
             description =
                 "Shows lists of specific data"
             default = Permission.Default.FALSE

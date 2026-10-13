@@ -1,20 +1,20 @@
 {
   "schemaVersion": 1,
-  "id": "grimac-fabric-intermediary",
+  "id": "freezeshield-fabric-intermediary",
   "version": "${version}",
-  "name": "GrimAC",
+  "name": "Freeze Shield",
   "description": "Libre simulation anticheat designed for 26.1 with 1.8-26.1 support, powered by PacketEvents 2.0.",
   "authors": [
-    "GrimAC"
+    "Freeze Shield"
   ],
   "license": "GPLv3",
   "environment": "server",
   "entrypoints": {
     "main": [
-      "ac.grim.grimac.platform.fabric.GrimACFabricIntermediaryEntryPoint"
+      "ac.grim.grimac.platform.fabric.Freeze ShieldFabricIntermediaryEntryPoint"
     ],
     "preLaunch": [
-      "ac.grim.grimac.platform.fabric.GrimACFabricIntermediaryEntryPoint"
+      "ac.grim.grimac.platform.fabric.Freeze ShieldFabricIntermediaryEntryPoint"
     ]
   },
   "mixins": [

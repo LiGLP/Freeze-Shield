@@ -19,9 +19,9 @@ public class GrimProfile implements BuildableCommand {
     @Override
     public void register(CommandManager<Sender> commandManager, CloudPlatformCommandArguments arguments) {
         commandManager.command(
-                commandManager.commandBuilder("grim", "grimac")
+                commandManager.commandBuilder("freezeshield", "fs")
                         .literal("profile")
-                        .permission("grim.profile")
+                        .permission("freezeshield.profile")
                         .required("target", arguments.singlePlayerSelectorParser())
                         .handler(this::handleProfile)
         );

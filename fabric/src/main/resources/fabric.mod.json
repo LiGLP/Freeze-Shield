@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "grimac",
+  "id": "freezeshield",
   "version": "${version}",
-  "name": "GrimAC",
-  "description": "GrimAC — Fabric meta-mod aggregator. Loads the intermediary or official variant by MC version range.",
+  "name": "Freeze Shield",
+  "description": "Freeze Shield — Fabric meta-mod aggregator. Loads the intermediary or official variant by MC version range.",
   "license": "GPL-3.0",
   "environment": "*",
   "depends": {

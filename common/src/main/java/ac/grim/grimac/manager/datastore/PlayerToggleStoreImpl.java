@@ -32,7 +32,7 @@ import java.util.logging.Logger;
  * carrying the value and the {@link Source} that wrote it. State transitions are
  * a precedence-gated CAS loop:
  * <pre>
- *   USER_TOGGLED      30  — staff explicitly issued /grim toggle. Stomps anything.
+ *   USER_TOGGLED      30  — staff explicitly issued /freezeshield toggle. Stomps anything.
  *   PERSISTED         20  — prefetch returned a row. Wins over PERMISSION_DEFAULT.
  *   PERMISSION_DEFAULT 10 — onUserLogin's grim.*.enable-on-join fallback.
  *   UNKNOWN            0  — initial state.

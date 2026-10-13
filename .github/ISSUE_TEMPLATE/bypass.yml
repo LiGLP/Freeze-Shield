@@ -17,7 +17,7 @@ body:
     attributes:
       label: Grim version
       description: |
-        Provide the version of Grim running on the server. You can run `/grim version` to check.
+        Provide the version of Freeze Shield running on the server. You can run `/freezeshield version` to check.
       placeholder: Examples include 2.3.73-8ddd7f1, 2.3.72, etc.
     validations:
       required: true

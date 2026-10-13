@@ -5,6 +5,7 @@ import ac.grim.grimac.api.AbstractCheck;
 import ac.grim.grimac.api.AbstractProcessor;
 import ac.grim.grimac.api.common.BasicReloadable;
 import ac.grim.grimac.checks.Check;
+import ac.grim.grimac.checks.impl.aim.AimA;
 import ac.grim.grimac.checks.impl.aim.AimDuplicateLook;
 import ac.grim.grimac.checks.impl.aim.AimModulo360;
 import ac.grim.grimac.checks.impl.aim.processor.AimProcessor;
@@ -20,9 +21,12 @@ import ac.grim.grimac.checks.impl.elytra.*;
 import ac.grim.grimac.checks.impl.exploit.ExploitA;
 import ac.grim.grimac.checks.impl.exploit.ExploitB;
 import ac.grim.grimac.checks.impl.groundspoof.NoFall;
+import ac.grim.grimac.checks.impl.inventory.InventoryA;
 import ac.grim.grimac.checks.impl.misc.ClientBrand;
+import ac.grim.grimac.checks.impl.misc.ClientDetection;
 import ac.grim.grimac.checks.impl.misc.GhostBlockMitigation;
 import ac.grim.grimac.checks.impl.misc.Post;
+import ac.grim.grimac.checks.impl.misc.SignA;
 import ac.grim.grimac.checks.impl.misc.TransactionOrder;
 import ac.grim.grimac.checks.impl.movement.NoSlow;
 import ac.grim.grimac.checks.impl.movement.PredictionRunner;
@@ -124,6 +128,8 @@ public class CheckManager implements BasicReloadable {
                 .put(AttackCooldownHandler.class, player.attackCooldown)
                 .put(TeamHandler.class, new TeamHandler(player))
                 .put(ClientBrand.class, new ClientBrand(player))
+                .put(ClientDetection.class, new ClientDetection(player))
+                .put(SignA.class, new SignA(player))
                 .put(NoFall.class, new NoFall(player))
                 .put(ExploitA.class, new ExploitA(player))
                 .put(ExploitB.class, new ExploitB(player))
@@ -140,6 +146,7 @@ public class CheckManager implements BasicReloadable {
                 .put(BadPacketsU.class, new BadPacketsU(player))
                 .put(BadPacketsV.class, new BadPacketsV(player))
                 .put(MultiActionsC.class, new MultiActionsC(player))
+                .put(InventoryA.class, new InventoryA(player))
                 .put(MultiActionsD.class, new MultiActionsD(player))
                 .put(PacketOrderO.class, new PacketOrderO(player))
 //                .put(PacketOrderP.class, new PacketOrderP(player))
@@ -159,6 +166,7 @@ public class CheckManager implements BasicReloadable {
                 .put(AimProcessor.class, new AimProcessor(player))
                 .put(AimModulo360.class, new AimModulo360(player))
                 .put(AimDuplicateLook.class, new AimDuplicateLook(player))
+                .put(AimA.class, new AimA(player))
                 .put(VehiclePredictionRunner.class, new VehiclePredictionRunner(player))
 
                 .put(NegativeTimer.class, new NegativeTimer(player))
@@ -250,6 +258,7 @@ public class CheckManager implements BasicReloadable {
                 .put(TransactionOrder.class, new TransactionOrder(player))
                 .put(VehicleC.class, new VehicleC(player))
                 .put(Hitboxes.class, new Hitboxes(player)) // Hitboxes is invoked by Reach
+                .put(WallHit.class, new WallHit(player)) // WallHit is invoked by Reach
                 .build();
 
         ArrayList<AbstractCheck> checks = new ArrayList<>();
@@ -443,9 +452,9 @@ public class CheckManager implements BasicReloadable {
         registerBuiltInVerboseTemplates();
 
         final String[] permissions = {
-                "grim.exempt.",
-                "grim.nosetback.",
-                "grim.nomodifypacket.",
+                "freezeshield.exempt.",
+                "freezeshield.nosetback.",
+                "freezeshield.nomodifypacket.",
         };
 
         for (final AbstractCheck check : checks) {

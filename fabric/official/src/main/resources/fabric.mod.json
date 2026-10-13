@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "id": "grimac-fabric-official",
+  "id": "freezeshield-fabric-official",
   "version": "${version}",
-  "name": "GrimAC (Fabric, official mappings)",
-  "description": "GrimAC anticheat for Minecraft 26.1-26.3. Official-mapped platform compiled directly against the deobfuscated 26.X jar, sibling to fabric-intermediary, which covers 1.16.1-1.21.11. Per-version submodules contribute grim26MainLoad entrypoints.",
+  "name": "Freeze Shield (Fabric, official mappings)",
+  "description": "Freeze Shield anticheat for Minecraft 26.1-26.3. Official-mapped platform compiled directly against the deobfuscated 26.X jar, sibling to fabric-intermediary, which covers 1.16.1-1.21.11. Per-version submodules contribute grim26MainLoad entrypoints.",
   "license": "GPLv3",
   "environment": "server",
   "entrypoints": {
     "preLaunch": [
-      "ac.grim.grimac.platform.fabric.GrimACFabricOfficialEntryPoint"
+      "ac.grim.grimac.platform.fabric.Freeze ShieldFabricOfficialEntryPoint"
     ],
     "main": [
-      "ac.grim.grimac.platform.fabric.GrimACFabricOfficialEntryPoint"
+      "ac.grim.grimac.platform.fabric.Freeze ShieldFabricOfficialEntryPoint"
     ]
   },
   "mixins": [

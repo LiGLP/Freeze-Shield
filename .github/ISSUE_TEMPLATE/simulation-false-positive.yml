@@ -7,7 +7,7 @@ body:
       label: Describe the false positive and how to replicate it
       description: |
         Video is always useful.
-        Use /grim verbose and /grim debug to get the simulation debug information.
+        Use /freezeshield verbose and /freezeshield debug to get the simulation debug information.
         A minimally reproducible description is best.
       placeholder: |
         Step 1. Do this
@@ -19,14 +19,14 @@ body:
   - type: input
     attributes:
       label: Grim Log
-      description: Provide the generated /grim log link.
+      description: Provide the generated /freezeshield log link.
     validations:
       required: true
 
   - type: textarea
     attributes:
       label: Grim version
-      description: Provide the version of Grim running on the server. You can run `/grim version` to check.
+      description: Provide the version of Freeze Shield running on the server. You can run `/freezeshield version` to check.
       placeholder: Examples include 2.3.73-8ddd7f1, 2.3.72, etc.
     validations:
       required: true

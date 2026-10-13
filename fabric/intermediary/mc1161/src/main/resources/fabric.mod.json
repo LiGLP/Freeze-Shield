@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "id": "grimac-mc1161",
+  "id": "freezeshield-mc1161",
   "version": "${version}",
-  "name": "GrimAC for 1.16.1",
+  "name": "Freeze Shield for 1.16.1",
   "description": "Libre simulation anticheat designed for 1.21 with 1.8-1.21 support, powered by PacketEvents 2.0.",
   "authors": [
-    "GrimAC"
+    "Freeze Shield"
   ],
   "license": "GPLv3",
   "environment": "server",
   "entrypoints": {
     "grimMainLoad": [
-      "ac.grim.grimac.platform.fabric.mc1161.GrimACFabric1161LoaderPlugin"
+      "ac.grim.grimac.platform.fabric.mc1161.Freeze ShieldFabric1161LoaderPlugin"
     ]
   },
   "accessWidener": "grimac.accesswidener",

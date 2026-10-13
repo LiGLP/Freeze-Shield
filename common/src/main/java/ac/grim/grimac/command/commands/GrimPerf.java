@@ -13,11 +13,11 @@ import org.jetbrains.annotations.NotNull;
 public class GrimPerf {
 
     public void register(CommandManager<Sender> commandManager, CloudPlatformCommandArguments arguments) {
-        Command.Builder<Sender> grimCommand = commandManager.commandBuilder("grim", "grimac");
+        Command.Builder<Sender> grimCommand = commandManager.commandBuilder("freezeshield", "fs");
 
         Command.Builder<Sender> configuredBuilder = grimCommand
                 .literal("perf", "performance")
-                .permission("grim.performance")
+                .permission("freezeshield.performance")
                 .handler(this::handlePerformance);
 
         commandManager.command(configuredBuilder);

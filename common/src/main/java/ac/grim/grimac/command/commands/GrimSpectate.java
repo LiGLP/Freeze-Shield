@@ -20,9 +20,9 @@ public class GrimSpectate implements BuildableCommand {
     @Override
     public void register(CommandManager<Sender> commandManager, CloudPlatformCommandArguments arguments) {
         commandManager.command(
-                commandManager.commandBuilder("grim", "grimac")
+                commandManager.commandBuilder("freezeshield", "fs")
                         .literal("spectate")
-                        .permission("grim.spectate")
+                        .permission("freezeshield.spectate")
                         .required("target", arguments.singlePlayerSelectorParser())
                         .handler(this::handleSpectate)
                         .apply(CloudCommandService.REQUIREMENT_FACTORY.create(PlayerSenderRequirement.INSTANCE))
@@ -50,7 +50,7 @@ public class GrimSpectate implements BuildableCommand {
 
         // hide player from tab list
         if (GrimAPI.INSTANCE.getSpectateManager().enable(platformPlayer)) {
-            sender.sendMessage(MessageUtil.getParsedComponent(sender, "spectate-return", "<click:run_command:/grim stopspectating><hover:show_text:\"/grim stopspectating\">\n%prefix% &fClick here to return to previous location\n</hover></click>"));
+            sender.sendMessage(MessageUtil.getParsedComponent(sender, "spectate-return", "<click:run_command:/freezeshield stopspectating><hover:show_text:\"/freezeshield stopspectating\">\n%prefix% &fClick here to return to previous location\n</hover></click>"));
         }
 
         platformPlayer.setGameMode(GameMode.SPECTATOR);

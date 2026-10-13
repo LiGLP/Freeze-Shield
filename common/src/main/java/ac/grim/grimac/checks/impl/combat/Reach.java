@@ -249,6 +249,7 @@ public class Reach extends Check implements PacketReceiveListener {
                     }
                     player.checkManager.get(Hitboxes.class).flag(result.verbose() + added);
                 }
+                case WALL -> player.checkManager.get(WallHit.class).onWallHit(reachEntity, result.minDistance());
             }
         }
 
@@ -282,6 +283,9 @@ public class Reach extends Check implements PacketReceiveListener {
         // +3 would be 3 + 3 = 6, which is the pre-1.20.5 behaviour, preventing "Missed Hitbox"
         final double distance = maxReach + 3;
 
+        // Whether every way the player could have hit the entity passes through a solid block
+        boolean allPathsBlocked = !isPrediction;
+
         final double[] possibleEyeHeights = player.getPossibleEyeHeights();
         for (Vector3dm lookVec : possibleLookDirs) {
             lookVec.multiply(distance);
@@ -294,11 +298,15 @@ public class Reach extends Check implements PacketReceiveListener {
 
                 if (ReachUtils.isVecInside(targetBox, eyePos)) {
                     minDistance = 0;
+                    allPathsBlocked = false;
                     break;
                 }
 
                 if (intercept != null) {
                     minDistance = Math.min(eyePos.distance(intercept), minDistance);
+                    if (allPathsBlocked && !WallHit.isBlocked(player, eyePos, intercept)) {
+                        allPathsBlocked = false;
+                    }
                 }
             }
         }
@@ -313,6 +321,11 @@ public class Reach extends Check implements PacketReceiveListener {
                 return new CheckResult(ResultType.REACH, minDistance, movementAllowance, attackRangeMovement != null);
             } else {
                 cancelBuffer = Math.max(0, cancelBuffer - 0.25);
+                if (allPathsBlocked) {
+                    return new CheckResult(ResultType.WALL, minDistance, 0, false);
+                } else if (!isPrediction) {
+                    player.checkManager.get(WallHit.class).onCleanHit();
+                }
             }
         }
 
@@ -378,7 +391,7 @@ public class Reach extends Check implements PacketReceiveListener {
     }
 
     private enum ResultType {
-        REACH, HITBOX, NONE
+        REACH, HITBOX, WALL, NONE
     }
 
     private record CheckResult(ResultType type, double minDistance, double extraMovement, boolean hasExtraMovement) {

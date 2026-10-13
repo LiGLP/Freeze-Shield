@@ -76,7 +76,7 @@ public class PlayerDataManager {
 
             // Has exempt permission
             GrimPlayer grimPlayer = GrimAPI.INSTANCE.getPlayerDataManager().getPlayer(user);
-            if (grimPlayer != null && grimPlayer.hasPermission("grim.exempt")) {
+            if (grimPlayer != null && grimPlayer.hasPermission("freezeshield.exempt")) {
                 exemptUser(user);
                 return false;
             }
@@ -115,7 +115,7 @@ public class PlayerDataManager {
         // eviction here means a stuck PE event (or a JVM-level channel
         // close that doesn't surface as UserDisconnectEvent) doesn't leak an open session.
         // hooks/toggles are NOOP when the datastore is disabled or its init failed
-        // AND go NOOP mid-session if an operator runs /grim reload after flipping database.enabled to false
+        // AND go NOOP mid-session if an operator runs /freezeshield reload after flipping database.enabled to false
         // a player who joined under the prior (enabled) config and disconnects post-reload has no live writer to fire onQuit, so their session stays open (row closed_at IS NULL).
         // The next datastore-enabled boot's crash sweep stamps closed_at = last_activity for still-open rows; permanently-disabled-after-the-fact leaves the row untouched until DB is enabled again.
         GrimAPI.INSTANCE.getDataStoreLifecycle().liveWriteHooks()

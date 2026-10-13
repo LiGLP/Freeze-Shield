@@ -1,4 +1,4 @@
-# GrimAC main configuration
+# Freeze Shield main configuration
 # Source code: https://github.com/MWHunter/Grim
 # Copyright 2025 DefineOutside and contributors, Licensed under GPLv3.
 # Modified binaries, or plugins with copied grim code, must be private,
@@ -32,6 +32,30 @@ client-brand:
     # Grim will blacklist specific Forge versions which include built-in Reach hacks (Forge 1.18.2 to 1.19.3).
     # Setting this option to false will allow said clients to connect to the server. Disable this at your own risk.
     disconnect-blacklisted-forge-versions: true
+
+client-detection:
+    # Detects blacklisted client mods (like Meteor Client) shortly after a player joins, even if they spoof
+    # their brand. Grim asks the game to resolve the mod's keybinds, which only works if the mod is installed.
+    # The player sees nothing. Clients that block this technique are logged and allowed in.
+    enabled: true
+    # How many ticks after spawning to wait before checking the player
+    delay-ticks: 40
+    # Detected players are kicked after a random delay so the kick isn't obviously tied to joining
+    kick-delay:
+        min-seconds: 3
+        max-seconds: 15
+    # Kick message for detected players; the default looks like a normal timeout
+    kick-message: "<lang:disconnect.timeout>"
+    # Should players be kicked if their client never answers the check?
+    # Vanilla clients always answer, but leave this off unless you've tested it with your playerbase
+    kick-on-no-response: false
+    # Alert sent to staff with alerts enabled
+    alert-format: "%prefix% &f%player% &cwas detected using &f%client%"
+    # Client name -> keybind translation keys that only exist when that client is installed
+    clients:
+        "Meteor Client":
+            - "key.meteor-client.open-gui"
+            - "key.meteor-client.open-commands"
 
 spectators:
     # Hide all spectators with the grim.spectator permission regardless if they are actually actively spectating
