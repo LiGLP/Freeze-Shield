@@ -147,6 +147,8 @@ public class CheckManager implements BasicReloadable {
                 .put(BadPacketsV.class, new BadPacketsV(player))
                 .put(MultiActionsC.class, new MultiActionsC(player))
                 .put(InventoryA.class, new InventoryA(player))
+                .put(AutoClickerA.class, new AutoClickerA(player))
+                .put(TriggerBot.class, new TriggerBot(player))
                 .put(MultiActionsD.class, new MultiActionsD(player))
                 .put(PacketOrderO.class, new PacketOrderO(player))
 //                .put(PacketOrderP.class, new PacketOrderP(player))
@@ -259,6 +261,7 @@ public class CheckManager implements BasicReloadable {
                 .put(VehicleC.class, new VehicleC(player))
                 .put(Hitboxes.class, new Hitboxes(player)) // Hitboxes is invoked by Reach
                 .put(WallHit.class, new WallHit(player)) // WallHit is invoked by Reach
+                .put(AutoClickerB.class, new AutoClickerB(player)) // AutoClickerB is invoked by AutoClickerA
                 .build();
 
         ArrayList<AbstractCheck> checks = new ArrayList<>();

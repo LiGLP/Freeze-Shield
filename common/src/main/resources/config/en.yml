@@ -38,9 +38,15 @@ anti-esp:
     # Its own settings are in the antiesp folder, and /antiesp manages it in game. Needs a restart to apply.
     enabled: true
 
+autoclicker:
+    # AutoClickerA flags players clicking faster than this (clicks per second) for sustain-seconds in a row.
+    # Butterfly and jitter clicking reach about 20 CPS for short bursts, so stay above that.
+    max-cps: 22
+    sustain-seconds: 3
+
 client-detection:
-    # Detects blacklisted client mods (like Meteor Client) shortly after a player joins, even if they spoof
-    # their brand. Grim asks the game to resolve the mod's keybinds, which only works if the mod is installed.
+    # Detects blacklisted client mods (like Meteor Client or Freecam) shortly after a player joins, even if they spoof
+    # their brand. Freeze Shield asks the game to resolve the mod's keybinds, which only works if the mod is installed.
     # The player sees nothing. Clients that block this technique are logged and allowed in.
     enabled: true
     # How many ticks after spawning to wait before checking the player
@@ -56,14 +62,28 @@ client-detection:
     kick-on-no-response: false
     # Alert sent to staff with alerts enabled
     alert-format: "%prefix% &f%player% &cwas detected using &f%client%"
+    # Clients listed here are banned instead of kicked. The ban is a normal server ban, so /unban, /pardon and the
+    # Unban button in the Discord ban log (freeze-api bot) lift it.
+    ban:
+        clients:
+            - "Meteor Client"
+        days: 3
+        # Shown in the ban list, when they try to join again, in /lookup and in the ban log. %client%, %days%
+        reason: "%client% detected | Unban: open a ticket on discord.gg/freezesmp-official"
+        # Kick screen right after the detection (MiniMessage). %client%, %days%
+        message: "<red><bold>You have been banned for %days% days</bold><newline><newline><gray>Reason: <white>%client% detected<newline><newline><gray>Think this is a mistake? Open a ticket for an unban:<newline><aqua>discord.gg/freezesmp-official"
     # Client name -> keybind translation keys that only exist when that client is installed
     clients:
         "Meteor Client":
             - "key.meteor-client.open-gui"
             - "key.meteor-client.open-commands"
+        "Freecam":
+            - "key.freecam.toggle"
+            - "key.freecam.controlPlayer.toggle"
+            - "key.freecam.playerControl"
 
 spectators:
-    # Hide all spectators with the grim.spectator permission regardless if they are actually actively spectating
+    # Hide all spectators with the freezeshield.spectate permission regardless if they are actually actively spectating
     hide-regardless: false
     # Will make spectators hidden only in these worlds, keep blank to allow all worlds
     allowed-worlds:

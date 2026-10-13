@@ -15,6 +15,7 @@ import ac.grim.grimac.utils.data.webhook.discord.Embed;
 import ac.grim.grimac.utils.data.webhook.discord.EmbedField;
 import ac.grim.grimac.utils.data.webhook.discord.EmbedFooter;
 import ac.grim.grimac.utils.data.webhook.discord.WebhookMessage;
+import ac.grim.grimac.utils.freeze.FreezeLogs;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -83,12 +84,8 @@ public class DiscordManager implements StartableInitable, ReloadableInitable {
             // No we're not going to pay for atomic reads in the hot loop however cheap for a one in a billion chance to read an outdated config
             // When your discord webhook settings are changed (who changes them in prod?) that can be fixed with a restart
             ConfigManager config = GrimAPI.INSTANCE.getConfigManager().getConfig();
-            if (!config.getBooleanElse("enabled", false)) {
-                url = null;
-                return;
-            }
-
-            String webhook = config.getStringElse("webhook", "");
+            // The embed settings below are still needed with the webhook off, alerts can go through freeze-api
+            String webhook = config.getBooleanElse("enabled", false) ? config.getStringElse("webhook", "") : "";
             boolean strictValidation = !config.getBooleanElse("disable-webhook-validation", false);
 
             if (webhook.isEmpty()) {
@@ -188,7 +185,9 @@ public class DiscordManager implements StartableInitable, ReloadableInitable {
     }
 
     public CompletableFuture<Boolean> sendWebhookMessage(WebhookMessage message) {
-        if (isDisabled()) return CompletableFuture.completedFuture(false);
+        // The freeze-api bot posts it to the anticheat log; the webhook is only the fallback without freeze-api
+        if (FreezeLogs.anticheat(message.toJson().toString())) return CompletableFuture.completedFuture(true);
+        if (url == null) return CompletableFuture.completedFuture(false);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(url)
@@ -210,7 +209,7 @@ public class DiscordManager implements StartableInitable, ReloadableInitable {
     }
 
     public boolean isDisabled() {
-        return url == null;
+        return url == null && !FreezeLogs.enabled();
     }
 
     private static void tick() {

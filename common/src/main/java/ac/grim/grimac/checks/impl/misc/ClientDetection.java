@@ -7,6 +7,8 @@ import ac.grim.grimac.checks.type.PacketReceiveListener;
 import ac.grim.grimac.player.GrimPlayer;
 import ac.grim.grimac.utils.anticheat.LogUtil;
 import ac.grim.grimac.utils.anticheat.MessageUtil;
+import ac.grim.grimac.utils.freeze.FreezeLogs;
+import ac.grim.grimac.utils.freeze.TempBans;
 import ac.grim.grimac.utils.math.GrimMath;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
@@ -32,10 +34,13 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerOp
 import net.kyori.adventure.text.Component;
 import org.jetbrains.annotations.NotNull;
 
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerFlying.isFlying;
@@ -68,6 +73,10 @@ public class ClientDetection extends GrimProcessor implements PacketReceiveListe
     private boolean kickOnNoResponse;
     private String kickMessage;
     private String alertFormat;
+    private final Set<String> banClients = new HashSet<>();
+    private int banDays;
+    private String banReason;
+    private String banMessage;
     private final Map<String, String> keyToClient = new LinkedHashMap<>();
 
     private State state = State.WAITING;
@@ -78,6 +87,7 @@ public class ClientDetection extends GrimProcessor implements PacketReceiveListe
     private Vector3i probePosition;
     private String detectedClient;
     private long kickAt;
+    private String pendingKickMessage;
 
     public ClientDetection(GrimPlayer player) {
         super(player);
@@ -93,10 +103,22 @@ public class ClientDetection extends GrimProcessor implements PacketReceiveListe
         kickMessage = config.getStringElse("client-detection.kick-message", "<lang:disconnect.timeout>");
         alertFormat = config.getStringElse("client-detection.alert-format", "%prefix% &f%player% &cwas detected using &f%client%");
 
+        banClients.clear();
+        banClients.addAll(config.getStringListElse("client-detection.ban.clients", List.of("Meteor Client")));
+        banDays = Math.max(1, config.getIntElse("client-detection.ban.days", 3));
+        banReason = config.getStringElse("client-detection.ban.reason",
+                "%client% detected | Unban: open a ticket on discord.gg/freezesmp-official");
+        banMessage = config.getStringElse("client-detection.ban.message",
+                "<red><bold>You have been banned for %days% days</bold><newline><newline><gray>Reason: <white>%client% detected"
+                        + "<newline><newline><gray>Think this is a mistake? Open a ticket for an unban:<newline><aqua>discord.gg/freezesmp-official");
+
         keyToClient.clear();
         Map<Object, Object> clients = config.getMapElse("client-detection.clients", null);
         if (clients == null) {
-            clients = Map.of("Meteor Client", List.of("key.meteor-client.open-gui", "key.meteor-client.open-commands"));
+            clients = Map.of(
+                    "Meteor Client", List.of("key.meteor-client.open-gui", "key.meteor-client.open-commands"),
+                    // key.freecam.toggle exists in every version, the other two cover current and older releases
+                    "Freecam", List.of("key.freecam.toggle", "key.freecam.controlPlayer.toggle", "key.freecam.playerControl"));
         }
 
         for (Map.Entry<Object, Object> entry : clients.entrySet()) {
@@ -145,7 +167,7 @@ public class ClientDetection extends GrimProcessor implements PacketReceiveListe
             case KICK_PENDING -> {
                 if (System.currentTimeMillis() >= kickAt) {
                     state = State.DONE;
-                    player.disconnect(MessageUtil.miniMessage(MessageUtil.replacePlaceholders(player, kickMessage)));
+                    player.disconnect(MessageUtil.miniMessage(MessageUtil.replacePlaceholders(player, pendingKickMessage)));
                 }
             }
             case DONE -> {}
@@ -307,6 +329,22 @@ public class ClientDetection extends GrimProcessor implements PacketReceiveListe
         String message = alertFormat.replace("%client%", client);
         Component component = MessageUtil.replacePlaceholders(player, MessageUtil.miniMessage(message));
         GrimAPI.INSTANCE.getAlertManager().sendAlert(component, null);
+
+        // Banned right away so leaving before the kick doesn't avoid it
+        String action = "Kicked";
+        pendingKickMessage = kickMessage;
+        if (banClients.contains(client)) {
+            Duration duration = Duration.ofDays(banDays);
+            String days = Integer.toString(banDays);
+            String reason = banReason.replace("%client%", client).replace("%days%", days);
+            if (TempBans.ban(player.getUniqueId(), player.getName(), reason, duration, "Freeze Shield")) {
+                action = "Banned for " + banDays + (banDays == 1 ? " day" : " days");
+                pendingKickMessage = banMessage.replace("%client%", client).replace("%days%", days);
+                LogUtil.info("Banned " + player.getName() + " for " + banDays + " days (" + client + ")");
+                FreezeLogs.banned(player.getName(), player.getUniqueId(), reason, duration);
+            }
+        }
+        FreezeLogs.clientDetected(player.getName(), player.getUniqueId(), client, action);
 
         // A random delay so the kick isn't obviously tied to joining
         int delay = kickDelayMinSeconds == kickDelayMaxSeconds ? kickDelayMinSeconds

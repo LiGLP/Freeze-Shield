@@ -66,6 +66,10 @@ public class AttackCooldownHandler extends GrimProcessor implements PacketReceiv
         stack = held;
     }
 
+    public int getTicksSinceLastSwing() {
+        return ticksSinceLastSwing;
+    }
+
     public float getMinimumProgress() {
         return GrimMath.clamp(((float) ticksSinceLastSwing + 0.5F) / (float) (1d / player.compensatedEntities.self.getAttributeValue(Attributes.ATTACK_SPEED) * 20.0D), 0, 1);
     }

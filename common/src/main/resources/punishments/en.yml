@@ -112,14 +112,18 @@ Punishments:
       - "Interact"
       - "Aim"
       - "WallHit"
+      - "TriggerBot"
     commands:
       - "20:40 [alert]"
       - "1:1 [log]"
-  # As of 2.2.10, there are no AutoClicker checks and this is a placeholder. Grim will include AutoClicker checks in the future.
+  # AutoClickerA (CPS above autoclicker.max-cps in config.yml) and AutoClickerB (robotic click timing).
+  # Both flag at most every few seconds, so a few violations already mean a lot.
   Autoclicker:
     remove-violations-after: 300
     checks:
       - "Autoclicker"
     commands:
-      - "20:40 [alert]"
+      - "2:2 [alert]"
       - "1:1 [log]"
+      - "3:5 [webhook]"
+      - "3:5 [proxy]"

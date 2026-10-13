@@ -169,6 +169,8 @@ bukkit {
         // Optional integrations of the embedded anti-ESP
         "FancyNpcs",
         "FancyHolograms",
+        // Discord logs, /lookup flags and the Unban button in the ban log
+        "freeze-api",
     )
 
     permissions {

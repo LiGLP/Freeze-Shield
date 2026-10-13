@@ -36,8 +36,11 @@ import ac.grim.grimac.platform.bukkit.player.BukkitPlatformPlayerFactory;
 import ac.grim.grimac.platform.bukkit.scheduler.bukkit.BukkitPlatformScheduler;
 import ac.grim.grimac.platform.bukkit.scheduler.folia.FoliaPlatformScheduler;
 import ac.grim.grimac.platform.bukkit.sender.BukkitSenderFactory;
+import ac.grim.grimac.platform.bukkit.utils.BukkitTempBans;
 import ac.grim.grimac.platform.bukkit.utils.placeholder.PlaceholderAPIExpansion;
 import ac.grim.grimac.utils.anticheat.LogUtil;
+import ac.grim.grimac.utils.freeze.FreezeApiBridge;
+import ac.grim.grimac.utils.freeze.TempBans;
 import ac.grim.grimac.utils.lazy.LazyHolder;
 import com.github.retrooper.packetevents.PacketEventsAPI;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
@@ -100,10 +103,14 @@ public final class GrimACBukkitLoaderPlugin extends JavaPlugin implements Platfo
     public void onEnable() {
         GrimAPI.INSTANCE.start();
         AntiEspLoader.enable(this);
+        TempBans.setBanner(new BukkitTempBans());
+        FreezeApiBridge.registerFlagLookup();
     }
 
     @Override
     public void onDisable() {
+        FreezeApiBridge.unregisterFlagLookup();
+        TempBans.setBanner(null);
         AntiEspLoader.disable();
         GrimAPI.INSTANCE.stop();
     }

@@ -19,6 +19,14 @@ violation-content:
     - "**Ping**: %ping%"
     - "**TPS**: %tps%"
 
+# freeze-api Discord bot. When freeze-api is installed, alerts ([webhook] in punishments.yml),
+# hacked client detections and automatic bans are posted by its bot instead of the webhook above.
+freeze-api:
+    enabled: true
+    # Channel keys of the freeze-api bot (ANTICHEAT_LOG_CHANNEL_ID / BAN_LOG_CHANNEL_ID in its .env)
+    anticheat-channel: "anticheat-log"
+    ban-channel: "ban-log"
+
 # Schema-Marker — siehe Kopf-Kommentar in config.yml.
 config-flavor: V2
 config-version: 1
