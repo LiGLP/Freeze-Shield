@@ -90,7 +90,9 @@ public class ClientDetection extends GrimProcessor implements PacketReceiveListe
     private String pendingKickMessage;
 
     public ClientDetection(GrimPlayer player) {
-        super(player);
+        // reload after our field initializers ran, the super constructor would see banClients/keyToClient as null
+        super(player, false);
+        reload();
     }
 
     @Override

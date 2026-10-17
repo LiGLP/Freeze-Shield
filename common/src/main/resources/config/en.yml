@@ -82,6 +82,45 @@ client-detection:
             - "key.freecam.controlPlayer.toggle"
             - "key.freecam.playerControl"
 
+fake-bases:
+    # Fills the rock around each player with decoy bases (stashes, vaults, spawner rooms...) that only exist on their
+    # client. They are buried in solid rock, so legit players never see them, but freecam, xray and block ESP users do.
+    # As soon as a player's real position gets within despawn-distance, the base turns back into rock, so following
+    # one only ever finds stone. Freecam doesn't move the real position, so the bases stay up for the camera.
+    enabled: true
+    # The world is split into square cells of this many blocks, each can hold one base. Smaller = more bases
+    cell-size: 32
+    # Chance (0-1) that a cell has a base
+    chance: 0.8
+    # Bases closer than this to the player (in blocks, from their nearest block) disappear
+    despawn-distance: 24
+    # Bases are only placed this close to the player; keep it within your view distance (10 chunks = 160 blocks)
+    max-distance: 128
+    # Most bases one player sees at once
+    max-bases: 100
+    # Bases are only placed below this Y level, so they stay underground
+    max-y: 40
+    # Bases sent to a player and cells checked for room, every half second. Higher fills the area faster after
+    # joining but costs more bandwidth and CPU
+    bases-per-update: 3
+    cells-per-update: 8
+    # Your own bases: build one, select it with WorldEdit, //copy, //schem save <name>, then copy the .schem file
+    # from plugins/WorldEdit/schematics/ to plugins/FreezeShield/fake-bases/ and run /fs reload.
+    # Air in the schematic is placed as air (a room carved into the rock); structure voids leave the rock as it is,
+    # so use them for anything around the base that shouldn't be dug out. Chest contents and sign text aren't kept.
+    # A base must be at least 4 blocks narrower than cell-size. Bases are placed in random rotations, chests, stairs
+    # and other directional blocks turn with them.
+    schematics:
+        # Use the six bases that come with Freeze Shield (stash, bunker, spawner, enchanting, vault, storage)
+        use-built-in: true
+        # Schematics bigger than this in any direction are skipped
+        max-size: 64
+        # How often each base is picked compared to the others (default 1), by file name without .schem.
+        # 0 turns one off
+        weights:
+            stash: 1
+            vault: 1
+
 spectators:
     # Hide all spectators with the freezeshield.spectate permission regardless if they are actually actively spectating
     hide-regardless: false

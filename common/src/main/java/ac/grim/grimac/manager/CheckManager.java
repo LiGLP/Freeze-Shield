@@ -24,6 +24,7 @@ import ac.grim.grimac.checks.impl.groundspoof.NoFall;
 import ac.grim.grimac.checks.impl.inventory.InventoryA;
 import ac.grim.grimac.checks.impl.misc.ClientBrand;
 import ac.grim.grimac.checks.impl.misc.ClientDetection;
+import ac.grim.grimac.checks.impl.misc.FakeBases;
 import ac.grim.grimac.checks.impl.misc.GhostBlockMitigation;
 import ac.grim.grimac.checks.impl.misc.Post;
 import ac.grim.grimac.checks.impl.misc.SignA;
@@ -129,6 +130,7 @@ public class CheckManager implements BasicReloadable {
                 .put(TeamHandler.class, new TeamHandler(player))
                 .put(ClientBrand.class, new ClientBrand(player))
                 .put(ClientDetection.class, new ClientDetection(player))
+                .put(FakeBases.class, new FakeBases(player))
                 .put(SignA.class, new SignA(player))
                 .put(NoFall.class, new NoFall(player))
                 .put(ExploitA.class, new ExploitA(player))
