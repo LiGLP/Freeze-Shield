@@ -117,6 +117,29 @@ public final class BaseSchematic {
         this(name, weight, copyOf.blocks);
     }
 
+    /**
+     * The same base standing in a dug out room: {@code sides} blocks of air around it and {@code top} above it,
+     * on the same floor. Makes a farm look like someone carved a room for it instead of a farm-shaped hole.
+     */
+    public BaseSchematic withRoom(int sides, int top) {
+        sides = Math.max(0, sides);
+        top = Math.max(0, top);
+        if (sides == 0 && top == 0) return this;
+
+        int air = WrappedBlockState.getDefaultState(SERVER_STATE_VERSION, StateTypes.AIR).getGlobalId();
+        int[][][] room = new int[sizeY + top][sizeZ + 2 * sides][sizeX + 2 * sides];
+        for (int y = 0; y < room.length; y++) {
+            for (int z = 0; z < room[y].length; z++) {
+                for (int x = 0; x < room[y][z].length; x++) {
+                    boolean inside = y < sizeY && z >= sides && z < sides + sizeZ && x >= sides && x < sides + sizeX;
+                    // The schematic's own structure voids stay rock
+                    room[y][z][x] = inside ? blocks[y][z - sides][x - sides] : air;
+                }
+            }
+        }
+        return new BaseSchematic(name, weight, room);
+    }
+
     private BaseSchematic(String name, String[]... layers) {
         this(name, 1, parseLayers(name, layers));
     }

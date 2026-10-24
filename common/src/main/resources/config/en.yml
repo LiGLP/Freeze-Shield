@@ -83,43 +83,66 @@ client-detection:
             - "key.freecam.playerControl"
 
 fake-bases:
-    # Fills the rock around each player with decoy bases (stashes, vaults, spawner rooms...) that only exist on their
-    # client. They are buried in solid rock, so legit players never see them, but freecam, xray and block ESP users do.
-    # As soon as a player's real position gets within despawn-distance, the base turns back into rock, so following
-    # one only ever finds stone. Freecam doesn't move the real position, so the bases stay up for the camera.
+    # Fills the rock around each player with decoy bases (stashes, farms, vaults, spawner rooms...) that only exist on
+    # their client. They are buried in solid rock, so legit players never see them, but freecam, xray and block ESP
+    # users see them everywhere. As a player's real position gets closer, more and more of a base crumbles back into
+    # rock, so following one only ever finds stone. Freecam doesn't move the real position, so the bases stay up for
+    # the camera. Only the blocks are sent: every chest, barrel and shulker is empty and nothing can be taken.
     enabled: true
     # The world is split into square cells of this many blocks, each can hold one base. Smaller = more bases
     cell-size: 32
+    # ...and stacked in layers this many blocks high, each layer of a cell holds its own base. Smaller = more bases
+    layer-height: 32
     # Chance (0-1) that a cell has a base
-    chance: 0.8
-    # Bases closer than this to the player (in blocks, from their nearest block) disappear
+    chance: 0.9
+    # Bases start disappearing (a random part of their blocks) when the player gets closer than fade-distance and
+    # are gone completely at despawn-distance (in blocks, from the base's nearest block)
+    fade-distance: 64
     despawn-distance: 24
     # Bases are only placed this close to the player; keep it within your view distance (10 chunks = 160 blocks)
     max-distance: 128
+    # Bases wider than cell-size - 4 or taller than layer-height - 2 (big farms and stashes) go on a second grid of
+    # cells this big instead, and the small cells they cover stay empty. It grows on its own to fit the widest one
+    large-cell-size: 128
+    # Chance (0-1) that a large cell has a base
+    large-chance: 0.8
     # Most bases one player sees at once
-    max-bases: 100
-    # Bases are only placed below this Y level, so they stay underground
-    max-y: 40
+    max-bases: 200
+    # Most fake blocks one player has at once. Each costs the server 8 bytes per player and a few bytes of
+    # bandwidth when sent; the big bamboo farm alone is about 200000
+    max-blocks: 500000
+    # Bases are only placed below this Y level. They always need solid rock all around, so they never show above ground
+    max-y: 320
     # Bases sent to a player and cells checked for room, every half second. Higher fills the area faster after
     # joining but costs more bandwidth and CPU
-    bases-per-update: 3
-    cells-per-update: 8
+    bases-per-update: 4
+    cells-per-update: 32
+    # Freeze Shield ships with farms (bonemealfarm, kelpfarm, sugarcanefarm, smallbambofarm, bigbambofarm) and
+    # stashes (greekstash, icestash, magicalstash, blackstonestash), copied to plugins/FreezeShield/fake-bases/ on
+    # first start. Delete a file to get rid of it for good, or set its weight to 0.
     # Your own bases: build one, select it with WorldEdit, //copy, //schem save <name>, then copy the .schem file
     # from plugins/WorldEdit/schematics/ to plugins/FreezeShield/fake-bases/ and run /fs reload.
     # Air in the schematic is placed as air (a room carved into the rock); structure voids leave the rock as it is,
     # so use them for anything around the base that shouldn't be dug out. Chest contents and sign text aren't kept.
-    # A base must be at least 4 blocks narrower than cell-size. Bases are placed in random rotations, chests, stairs
-    # and other directional blocks turn with them.
+    # Bases are placed in random rotations, chests, stairs and other directional blocks turn with them.
     schematics:
-        # Use the six bases that come with Freeze Shield (stash, bunker, spawner, enchanting, vault, storage)
+        # Use the six bases that are part of the code (stash, bunker, spawner, enchanting, vault, storage)
         use-built-in: true
         # Schematics bigger than this in any direction are skipped
-        max-size: 64
+        max-size: 128
         # How often each base is picked compared to the others (default 1), by file name without .schem.
-        # 0 turns one off
+        # Small and large bases are picked separately. 0 turns one off
         weights:
             stash: 1
             vault: 1
+        # Dig a room around a base, "<sides> <top>" blocks of air, so it looks like it was built in a real room.
+        # The bundled farms get "3 2" unless set here, everything else "0 0" (placed straight into the rock)
+        rooms:
+            bonemealfarm: 3 2
+            kelpfarm: 3 2
+            sugarcanefarm: 3 2
+            smallbambofarm: 3 2
+            bigbambofarm: 3 2
 
 spectators:
     # Hide all spectators with the freezeshield.spectate permission regardless if they are actually actively spectating
