@@ -9,6 +9,7 @@ import com.github.retrooper.packetevents.protocol.player.User;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -16,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
 
 /**
  * Starts the embedded anti-ESP (RaycastedAntiESP, AGPL-3.0, https://github.com/Cubicake/RaycastedAntiESP).
@@ -29,6 +31,7 @@ public final class AntiEspLoader {
 
     private static URLClassLoader classLoader;
     private static Class<?> entryClass;
+    private static Path extractedJar;
 
     private AntiEspLoader() {}
 
@@ -43,17 +46,24 @@ public final class AntiEspLoader {
             return;
         }
 
+        // Shouldn't happen, but never run two copies at once
+        if (classLoader != null) disable();
+
         try {
-            Path jar = extractJar(plugin);
-            classLoader = new URLClassLoader(new URL[]{jar.toUri().toURL()}, plugin.getClass().getClassLoader());
+            extractedJar = extractJar(plugin);
+            // Parent first: PacketEvents, Bukkit, Paper and the server's libraries all come from Freeze Shield's loader
+            classLoader = new URLClassLoader(new URL[]{extractedJar.toUri().toURL()}, plugin.getClass().getClassLoader());
             entryClass = Class.forName(ENTRY_CLASS, true, classLoader);
 
             BiConsumer<Object, byte[]> grimSync = (user, packet) -> ExternalPacketBridge.dispatchSend((User) user, packet);
-            Method enable = entryClass.getMethod("enable", JavaPlugin.class, Path.class, BiConsumer.class);
-            enable.invoke(null, plugin, plugin.getDataFolder().toPath().resolve("antiesp"), grimSync);
+            BooleanSupplier clientOnlyPacket = ExternalPacketBridge::isSendingClientOnly;
+            Method enable = entryClass.getMethod("enable", JavaPlugin.class, Path.class, BiConsumer.class, BooleanSupplier.class);
+            enable.invoke(null, plugin, plugin.getDataFolder().toPath().resolve("antiesp"), grimSync, clientOnlyPacket);
             LogUtil.info("Anti-ESP enabled");
         } catch (Throwable throwable) {
-            LogUtil.error("Failed to enable the anti-ESP, Freeze Shield keeps running without it", throwable);
+            Throwable cause = throwable instanceof InvocationTargetException && throwable.getCause() != null ? throwable.getCause() : throwable;
+            LogUtil.error("Failed to enable the anti-ESP, Freeze Shield keeps running without it", cause);
+            // Removes whatever it registered before failing
             disable();
         }
     }
@@ -63,14 +73,26 @@ public final class AntiEspLoader {
             if (entryClass != null) {
                 entryClass.getMethod("disable").invoke(null);
             }
+        } catch (Throwable throwable) {
+            LogUtil.error("Failed to disable the anti-ESP", throwable);
+        }
+        try {
             if (classLoader != null) {
                 classLoader.close();
             }
         } catch (Throwable throwable) {
-            LogUtil.error("Failed to disable the anti-ESP", throwable);
+            LogUtil.error("Failed to close the anti-ESP classloader", throwable);
         } finally {
             entryClass = null;
             classLoader = null;
+        }
+        if (extractedJar != null) {
+            try {
+                Files.deleteIfExists(extractedJar);
+            } catch (Exception ignored) {
+                // Still open somewhere (Windows), deleteOnExit takes care of it
+            }
+            extractedJar = null;
         }
     }
 
@@ -83,6 +105,7 @@ public final class AntiEspLoader {
         }
         try {
             Class.forName("io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents");
+            Class.forName("io.papermc.paper.event.player.PlayerClientLoadedWorldEvent");
         } catch (ClassNotFoundException e) {
             return "it needs Paper (or a fork of it such as Purpur or Folia)";
         }

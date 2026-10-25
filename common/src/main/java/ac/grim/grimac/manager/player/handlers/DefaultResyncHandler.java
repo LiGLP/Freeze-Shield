@@ -1,5 +1,6 @@
 package ac.grim.grimac.manager.player.handlers;
 
+import ac.grim.grimac.utils.anticheat.ExternalPacketBridge;
 import ac.grim.grimac.GrimAPI;
 import ac.grim.grimac.api.handler.ResyncHandler;
 import ac.grim.grimac.platform.api.player.BlockTranslator;
@@ -88,7 +89,7 @@ public record DefaultResyncHandler(GrimPlayer player) implements ResyncHandler {
                                 }
 
                                 WrapperPlayServerMultiBlockChange packet = new WrapperPlayServerMultiBlockChange(new Vector3i(currChunkX, currChunkY, currChunkZ), true, encodedBlocks);
-                                player.runSafely(() -> player.user.sendPacket(packet));
+                                player.runSafely(() -> ExternalPacketBridge.sendClientOnly(player.user, packet));
                             }
                         }
                     }
@@ -122,7 +123,7 @@ public record DefaultResyncHandler(GrimPlayer player) implements ResyncHandler {
             final int blockId = world.getChunkAt(chunkX, chunkZ).getBlockID(x & 15, y, z & 15);
 
             player.runSafely(() -> {
-                player.user.sendPacket(new WrapperPlayServerBlockChange(new Vector3i(x, y, z), blockId));
+                ExternalPacketBridge.sendClientOnly(player.user, new WrapperPlayServerBlockChange(new Vector3i(x, y, z), blockId));
                 if (PacketEvents.getAPI().getServerManager().getVersion().isNewerThanOrEquals(ServerVersion.V_1_19)) { // Via will handle this for us pre-1.19
                     player.user.sendPacket(new WrapperPlayServerAcknowledgeBlockChanges(sequence)); // Make 1.19 clients apply the changes
                 }

@@ -13,11 +13,16 @@ import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.manager.protocol.ProtocolManager;
 import com.github.retrooper.packetevents.netty.buffer.ByteBufHelper;
 import com.github.retrooper.packetevents.protocol.player.User;
+import com.github.retrooper.packetevents.util.Vector3i;
 import com.github.retrooper.packetevents.wrapper.PacketWrapper;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerMultiBlockChange;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
 
 /**
  * Freeze Shield integration: tells the anticheat about every packet the anti-ESP changes behind its back.
@@ -29,6 +34,8 @@ import java.util.function.BiConsumer;
 public final class GrimSync {
     // (User, encoded packet bytes including the packet id), set by Freeze Shield when it loads the anti-ESP
     private static volatile BiConsumer<Object, byte[]> sink;
+    // Whether the packet being encoded on this thread only exists on the client, see isClientOnlyPacket
+    private static volatile BooleanSupplier clientOnlyPacket = () -> false;
 
     /**
      * Blocks hidden while parsing the current chunk on this thread, as {x, y, z, blockId}. The chunk parser fills it
@@ -42,8 +49,45 @@ public final class GrimSync {
         sink = newSink;
     }
 
+    public static void setClientOnlyPacketCheck(BooleanSupplier check) {
+        clientOnlyPacket = check == null ? () -> false : check;
+    }
+
+    /**
+     * Whether the block packet being sent right now was made up by the anticheat (fake bases, or a resync of what the
+     * client already has) instead of coming from the server's world. Those must not be tracked or hidden: a fake
+     * chest would be hidden as stone, and a resync of a hidden chest as stone would make the anti-ESP forget it.
+     */
+    public static boolean isClientOnlyPacket() {
+        return clientOnlyPacket.getAsBoolean();
+    }
+
+    /**
+     * Shows the anticheat blocks the client got a different version of, as {x, y, z, blockId}, with one multi block
+     * change per chunk section instead of a packet per block.
+     */
+    public static void notifyOnlyBlocks(User viewer, List<int[]> blocks) {
+        if (sink == null || blocks.isEmpty()) return;
+
+        Map<Long, List<WrapperPlayServerMultiBlockChange.EncodedBlock>> sections = new HashMap<>();
+        for (int[] block : blocks) {
+            long section = ((long) (block[0] >> 4) & 0x3FFFFF) << 42 | ((long) (block[2] >> 4) & 0x3FFFFF) << 20 | ((long) (block[1] >> 4) & 0xFFFFF);
+            sections.computeIfAbsent(section, k -> new ArrayList<>())
+                    .add(new WrapperPlayServerMultiBlockChange.EncodedBlock(block[3], block[0], block[1], block[2]));
+        }
+        for (List<WrapperPlayServerMultiBlockChange.EncodedBlock> sectionBlocks : sections.values()) {
+            WrapperPlayServerMultiBlockChange.EncodedBlock first = sectionBlocks.get(0);
+            Vector3i sectionPos = new Vector3i(first.getX() >> 4, first.getY() >> 4, first.getZ() >> 4);
+            notifyOnly(viewer, new WrapperPlayServerMultiBlockChange(sectionPos, true,
+                    sectionBlocks.toArray(new WrapperPlayServerMultiBlockChange.EncodedBlock[0])));
+        }
+    }
+
     /** Replacement for {@code viewer.writePacketSilently(packet)} that also shows the packet to the anticheat. */
     public static void writeSilently(User viewer, PacketWrapper<?> packet) {
+        // Disconnected while a transition was pending
+        if (viewer == null || viewer.getChannel() == null) return;
+
         BiConsumer<Object, byte[]> currentSink = sink;
         if (currentSink == null) {
             viewer.writePacketSilently(packet);
@@ -67,7 +111,7 @@ public final class GrimSync {
     /** Shows the anticheat a packet the client never receives, e.g. to undo a spawn that was cancelled after it saw it. */
     public static void notifyOnly(User viewer, PacketWrapper<?> packet) {
         BiConsumer<Object, byte[]> currentSink = sink;
-        if (currentSink == null) return;
+        if (currentSink == null || viewer == null || viewer.getChannel() == null) return;
 
         packet.prepareForSend(viewer.getChannel(), true);
         try {

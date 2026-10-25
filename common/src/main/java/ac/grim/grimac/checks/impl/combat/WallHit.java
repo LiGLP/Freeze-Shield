@@ -47,6 +47,7 @@ public class WallHit extends Check {
 
     void onCleanHit() {
         buffer = Math.max(0, buffer - 0.5);
+        reward();
     }
 
     static boolean isBlocked(GrimPlayer player, Vector3d eye, Vector3d hit) {

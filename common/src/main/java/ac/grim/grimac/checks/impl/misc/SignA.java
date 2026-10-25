@@ -38,11 +38,14 @@ public class SignA extends Check implements PacketSendListener, PacketReceiveLis
         if (event.getPacketType() != PacketType.Play.Server.OPEN_SIGN_EDITOR) return;
 
         Vector3i position = new WrapperPlayServerOpenSignEditor(event).getPosition();
-        player.sendTransaction();
-        player.latencyUtils.addRealTimeTask(player.lastTransactionSent.get(), () -> {
-            if (position.equals(editorPosition)) { // Not answered yet
-                editorOpenedAt = System.nanoTime();
-            }
+        // The transaction has to follow the editor, sending it from here would put it in front
+        event.getTasksAfterSend().add(() -> {
+            player.sendTransaction();
+            player.latencyUtils.addRealTimeTask(player.lastTransactionSent.get(), () -> {
+                if (position.equals(editorPosition)) { // Not answered yet
+                    editorOpenedAt = System.nanoTime();
+                }
+            });
         });
 
         // Until the client acknowledges the editor, any reply for this sign is instant

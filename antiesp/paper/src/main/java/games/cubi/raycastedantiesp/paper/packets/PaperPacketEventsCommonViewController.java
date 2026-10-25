@@ -31,7 +31,7 @@ public final class PaperPacketEventsCommonViewController extends PacketEventsCom
     public PaperPacketEventsCommonViewController(IntSupplier currentTickSupplier) {
         super(currentTickSupplier);
         Bukkit.getWorlds().forEach(this::registerWorld);
-        Bukkit.getPluginManager().registerEvents(this, RaycastedAntiESP.get());
+        RaycastedAntiESP.registerBukkitListener(this);
     }
 
     @Override

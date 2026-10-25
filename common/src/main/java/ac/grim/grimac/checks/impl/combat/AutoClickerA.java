@@ -51,6 +51,8 @@ public class AutoClickerA extends Check implements PacketReceiveListener {
     private int digCooldown;
     private int overLimitTicks;
     private int cancelAttacksTicks;
+    private int ticksUnderLimit;
+    private AutoClickerB autoClickerB; // CheckManager isn't built yet in the constructor
 
     public AutoClickerA(GrimPlayer player) {
         super(player);
@@ -130,11 +132,11 @@ public class AutoClickerA extends Check implements PacketReceiveListener {
         if (!player.isTickingReliablyFor(3)) {
             // A skipped tick would squeeze more clicks into the window, start over
             resetWindow();
-            player.checkManager.get(AutoClickerB.class).reset();
+            autoClickerB().reset();
             return;
         }
 
-        player.checkManager.get(AutoClickerB.class).onTick(clicks);
+        autoClickerB().onTick(clicks);
 
         windowSum += clicks - clicksPerTick[windowIndex];
         clicksPerTick[windowIndex] = clicks;
@@ -153,7 +155,16 @@ public class AutoClickerA extends Check implements PacketReceiveListener {
             }
         } else {
             overLimitTicks = Math.max(0, overLimitTicks - 2);
+            if (++ticksUnderLimit >= 20) {
+                ticksUnderLimit = 0;
+                reward();
+            }
         }
+    }
+
+    private AutoClickerB autoClickerB() {
+        if (autoClickerB == null) autoClickerB = player.checkManager.get(AutoClickerB.class);
+        return autoClickerB;
     }
 
     private void resetWindow() {

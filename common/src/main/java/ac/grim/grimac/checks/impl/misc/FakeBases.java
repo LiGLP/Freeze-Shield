@@ -1,5 +1,6 @@
 package ac.grim.grimac.checks.impl.misc;
 
+import ac.grim.grimac.utils.anticheat.ExternalPacketBridge;
 import ac.grim.grimac.api.config.ConfigManager;
 import ac.grim.grimac.checks.GrimProcessor;
 import ac.grim.grimac.checks.type.PacketReceiveListener;
@@ -7,15 +8,22 @@ import ac.grim.grimac.checks.type.PacketSendListener;
 import ac.grim.grimac.player.GrimPlayer;
 import ac.grim.grimac.utils.fakebase.BaseSchematic;
 import ac.grim.grimac.utils.fakebase.FakeBaseSchematics;
+import ac.grim.grimac.utils.latency.CompensatedWorld;
 import ac.grim.grimac.utils.math.GrimMath;
+import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
+import com.github.retrooper.packetevents.manager.server.ServerVersion;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.player.GameMode;
+import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
 import com.github.retrooper.packetevents.protocol.world.states.type.StateType;
 import com.github.retrooper.packetevents.protocol.world.states.type.StateTypes;
 import com.github.retrooper.packetevents.util.Vector3i;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerMultiBlockChange;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerRespawn;
+import it.unimi.dsi.fastutil.ints.Int2ByteOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -27,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.concurrent.ThreadLocalRandom;
@@ -53,8 +62,11 @@ import static com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayC
 public class FakeBases extends GrimProcessor implements PacketReceiveListener, PacketSendListener {
     private static final long SEED = ThreadLocalRandom.current().nextLong();
     private static final long LARGE_SALT = 0x5DEECE66DL;
+    private static final int AIR_ID = WrappedBlockState.getDefaultState(CompensatedWorld.blockVersion, StateTypes.AIR).getGlobalId();
     private static final int UPDATE_INTERVAL = 10; // ticks
     private static final int Y_ATTEMPTS = 4;
+    // Big bases rarely find a cave free spot, so they get more heights to try
+    private static final int LARGE_Y_ATTEMPTS = 16;
     private static final int RETRY_REJECTED_TICKS = 600;
     // Bases only spawn this much further out than they despawn, so they don't flicker at the edge
     private static final int SPAWN_MARGIN = 8;
@@ -86,6 +98,8 @@ public class FakeBases extends GrimProcessor implements PacketReceiveListener, P
     private final Long2ObjectOpenHashMap<Base> bases = new Long2ObjectOpenHashMap<>();
     // Cells where the base didn't fit, and the tick to try them again
     private final Long2IntOpenHashMap rejected = new Long2IntOpenHashMap();
+    // Block state id -> 1 if it counts as rock, -1 if not
+    private final Int2ByteOpenHashMap rockCache = new Int2ByteOpenHashMap();
     private int ticks;
     // Fake blocks this player currently has
     private int blocks;
@@ -112,18 +126,34 @@ public class FakeBases extends GrimProcessor implements PacketReceiveListener, P
         maxY = config.getIntElse("fake-bases.max-y", 320);
         basesPerUpdate = Math.max(1, config.getIntElse("fake-bases.bases-per-update", 4));
         cellsPerUpdate = Math.max(1, config.getIntElse("fake-bases.cells-per-update", 32));
-        // GrimProcessor's constructor reloads before our field initializers have run
+        // GrimProcessor's constructor reloads before our field initializers have run. A reload runs on the
+        // player's netty thread, and the grid or the schematics may have changed, so take the old bases down
+        if (bases != null && !bases.isEmpty()) removeAll();
         if (rejected != null) rejected.clear();
     }
 
     @Override
     public void onPacketSend(PacketSendEvent event) {
-        // The client throws its world away, and our bases with it
-        if (event.getPacketType() == PacketType.Play.Server.RESPAWN || event.getPacketType() == PacketType.Play.Server.JOIN_GAME) {
+        // The client throws its world away, and our bases with it. Respawning in the same world keeps the
+        // world (and our blocks in it), so keep tracking them then, or they would be stuck there for good
+        if (event.getPacketType() == PacketType.Play.Server.JOIN_GAME
+                || event.getPacketType() == PacketType.Play.Server.RESPAWN && isWorldChange(new WrapperPlayServerRespawn(event))) {
             bases.clear();
             rejected.clear();
             blocks = 0;
         }
+    }
+
+    // Same test PacketPlayerRespawn uses to clear Grim's own world
+    private boolean isWorldChange(WrapperPlayServerRespawn respawn) {
+        if (player.dimensionType == null) return true;
+        if (player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_16) && PacketEvents.getAPI().getServerManager().getVersion().isNewerThan(ServerVersion.V_1_16)) {
+            return !Objects.equals(respawn.getWorldName().orElse(null), player.worldName);
+        }
+
+        ClientVersion version = CompensatedWorld.blockVersion;
+        return respawn.getDimensionType().getId(version) != player.dimensionType.getId(version)
+                || !Objects.equals(respawn.getDimensionType().getName(), player.dimensionType.getName());
     }
 
     @Override
@@ -168,12 +198,17 @@ public class FakeBases extends GrimProcessor implements PacketReceiveListener, P
 
     // Forgets bases the client lost or the server overwrote, and makes room by dropping ones far behind the player
     private void validate() {
+        // Cells the player walked away from would never be looked at again
+        if (ticks % RETRY_REJECTED_TICKS == 0) rejected.long2IntEntrySet().removeIf(entry -> entry.getIntValue() <= ticks);
+
         for (ObjectIterator<Base> it = bases.values().iterator(); it.hasNext(); ) {
             Base base = it.next();
             if (!player.compensatedWorld.isChunkLoaded(base.minX >> 4, base.minZ >> 4) || !player.compensatedWorld.isChunkLoaded(base.maxX >> 4, base.minZ >> 4)
                     || !player.compensatedWorld.isChunkLoaded(base.minX >> 4, base.maxZ >> 4) || !player.compensatedWorld.isChunkLoaded(base.maxX >> 4, base.maxZ >> 4)) {
-                blocks -= base.size - base.faded;
-                it.remove(); // unloaded, nothing to restore
+                // Part of it unloaded. The chunks still loaded keep their fake blocks until we restore them, the
+                // unloaded ones are skipped since Grim's world no longer has the fake block there
+                restore(base, base.size);
+                it.remove();
                 continue;
             }
 
@@ -320,7 +355,8 @@ public class FakeBases extends GrimProcessor implements PacketReceiveListener, P
 
         double minSq = (double) (despawnDistance + SPAWN_MARGIN) * (despawnDistance + SPAWN_MARGIN);
         Base base = null;
-        for (int attempt = 0; attempt < Y_ATTEMPTS && base == null; attempt++) {
+        int attempts = isSmall(schematic) ? Y_ATTEMPTS : LARGE_Y_ATTEMPTS;
+        for (int attempt = 0; attempt < attempts && base == null; attempt++) {
             int y = floor + plan.random.nextInt(highestY - floor + 1);
             double dy = Base.axisDistance(player.y, y, y + schematic.sizeY - 1);
             if (horizontalSq + dy * dy < minSq) continue; // too close to show right now, try again later
@@ -383,11 +419,22 @@ public class FakeBases extends GrimProcessor implements PacketReceiveListener, P
             for (int by = y - 1; by <= y + height; by++) {
                 boolean side = bx == x - 1 || bx == x + width || by == y - 1 || by == y + height;
                 for (int bz = z - 1; bz <= z + depth; bz += side ? 1 : depth + 1) {
-                    if (!isRock(player.compensatedWorld.getBlock(bx, by, bz).getType())) return false;
+                    if (!isRock(player.compensatedWorld.getBlockStateId(bx, by, bz))) return false;
                 }
             }
         }
         return true;
+    }
+
+    // By id and cached, the shell of a big base is tens of thousands of blocks
+    private boolean isRock(int id) {
+        if (id < 0) return false; // unloaded, outside the world or an empty section
+        byte cached = rockCache.get(id);
+        if (cached == 0) {
+            cached = isRock(WrappedBlockState.getByGlobalId(CompensatedWorld.blockVersion, id, false).getType()) ? (byte) 1 : (byte) -1;
+            rockCache.put(id, cached);
+        }
+        return cached > 0;
     }
 
     private static boolean isRock(StateType type) {
@@ -411,6 +458,8 @@ public class FakeBases extends GrimProcessor implements PacketReceiveListener, P
                     int fake = schematic.blockAt(bx, by, bz, rotation);
                     if (fake == BaseSchematic.KEEP) continue;
                     int id = player.compensatedWorld.getBlockStateId(x + bx, y + by, z + bz);
+                    // Negative means an empty (all air) chunk section, never send that as a block id
+                    if (id < 0) id = AIR_ID;
                     if (fake == id) continue;
 
                     local[size] = bx + width * (bz + depth * by);
@@ -463,6 +512,8 @@ public class FakeBases extends GrimProcessor implements PacketReceiveListener, P
             if (fake) {
                 id = base.fake(i);
             } else {
+                // The client dropped the chunk, and the fake block with it
+                if (!player.compensatedWorld.isChunkLoaded(x >> 4, z >> 4)) continue;
                 // Leave alone what the server changed since; before the client confirmed the base, everything is ours
                 if (acknowledged && player.compensatedWorld.getBlockStateId(x, y, z) != base.fake(i)) continue;
                 id = base.original[i];
@@ -475,7 +526,7 @@ public class FakeBases extends GrimProcessor implements PacketReceiveListener, P
         for (List<WrapperPlayServerMultiBlockChange.EncodedBlock> sectionBlocks : sections.values()) {
             WrapperPlayServerMultiBlockChange.EncodedBlock first = sectionBlocks.get(0);
             Vector3i sectionPos = new Vector3i(first.getX() >> 4, first.getY() >> 4, first.getZ() >> 4);
-            player.user.sendPacket(new WrapperPlayServerMultiBlockChange(sectionPos, true,
+            ExternalPacketBridge.sendClientOnly(player.user, new WrapperPlayServerMultiBlockChange(sectionPos, true,
                     sectionBlocks.toArray(new WrapperPlayServerMultiBlockChange.EncodedBlock[0])));
         }
     }

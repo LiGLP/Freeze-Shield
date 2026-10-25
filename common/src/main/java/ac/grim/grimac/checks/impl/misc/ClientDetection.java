@@ -4,6 +4,7 @@ import ac.grim.grimac.GrimAPI;
 import ac.grim.grimac.api.config.ConfigManager;
 import ac.grim.grimac.checks.GrimProcessor;
 import ac.grim.grimac.checks.type.PacketReceiveListener;
+import ac.grim.grimac.checks.type.PacketSendListener;
 import ac.grim.grimac.player.GrimPlayer;
 import ac.grim.grimac.utils.anticheat.LogUtil;
 import ac.grim.grimac.utils.anticheat.MessageUtil;
@@ -12,6 +13,7 @@ import ac.grim.grimac.utils.freeze.TempBans;
 import ac.grim.grimac.utils.math.GrimMath;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
+import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.manager.server.ServerVersion;
 import com.github.retrooper.packetevents.protocol.nbt.NBTByte;
 import com.github.retrooper.packetevents.protocol.nbt.NBTCompound;
@@ -26,6 +28,7 @@ import com.github.retrooper.packetevents.protocol.world.states.type.StateType;
 import com.github.retrooper.packetevents.protocol.world.states.type.StateTypes;
 import com.github.retrooper.packetevents.util.Vector3i;
 import com.github.retrooper.packetevents.wrapper.PacketWrapper;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientResourcePackStatus;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientUpdateSign;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerBlockChange;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerBlockEntityData;
@@ -57,14 +60,15 @@ import static com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayC
  * is sent alongside as a control; if that one doesn't resolve either, the client blocks this technique and
  * the result is inconclusive.
  */
-public class ClientDetection extends GrimProcessor implements PacketReceiveListener {
+public class ClientDetection extends GrimProcessor implements PacketReceiveListener, PacketSendListener {
 
     private static final ServerVersion SERVER_VERSION = PacketEvents.getAPI().getServerManager().getVersion();
     private static final ClientVersion SERVER_STATE_VERSION = SERVER_VERSION.toClientVersion();
     private static final String CONTROL_KEY = "key.jump";
     private static final int KEYS_PER_PROBE = 3; // line 0 is the control
-    private static final int RESPONSE_TIMEOUT_TICKS = 100;
-    private static final int MAX_PLACEMENT_ATTEMPTS = 10;
+    // Wall clock instead of counted packets: clients older than 1.21.2 only send a movement packet every second while idle
+    private static final long RESPONSE_TIMEOUT_MS = 10_000;
+    private static final long PLACEMENT_TIMEOUT_MS = 60_000;
 
     private boolean enabled;
     private int delayTicks;
@@ -80,8 +84,11 @@ public class ClientDetection extends GrimProcessor implements PacketReceiveListe
     private final Map<String, String> keyToClient = new LinkedHashMap<>();
 
     private State state = State.WAITING;
-    private int ticks;
-    private int placementAttempts;
+    private long waitingSince;
+    private long probeSentAt;
+    private long placementSince;
+    // Resource pack prompts sent in play that the client hasn't answered yet, the probe would close the prompt
+    private int pendingPackPrompts;
     private final List<List<String>> pendingProbes = new ArrayList<>();
     private List<String> currentProbe;
     private Vector3i probePosition;
@@ -132,14 +139,36 @@ public class ClientDetection extends GrimProcessor implements PacketReceiveListe
     }
 
     @Override
+    public void onPacketSend(final PacketSendEvent event) {
+        if (event.getPacketType() == PacketType.Play.Server.RESOURCE_PACK_SEND && state != State.DONE) {
+            pendingPackPrompts++;
+        }
+    }
+
+    @Override
     public void onPacketReceive(final PacketReceiveEvent event) {
         if (event.getPacketType() == PacketType.Play.Client.UPDATE_SIGN) {
             handleSignUpdate(event);
             return;
         }
 
-        if (!isFlying(event.getPacketType())) return;
+        if (event.getPacketType() == PacketType.Play.Client.RESOURCE_PACK_STATUS) {
+            WrapperPlayClientResourcePackStatus.Result result = new WrapperPlayClientResourcePackStatus(event).getResult();
+            // The first answer to a pack closes its prompt, the later ones (downloaded, loaded) don't matter here
+            if (result == WrapperPlayClientResourcePackStatus.Result.ACCEPTED
+                    || result == WrapperPlayClientResourcePackStatus.Result.DECLINED
+                    || result == WrapperPlayClientResourcePackStatus.Result.INVALID_URL
+                    || result == WrapperPlayClientResourcePackStatus.Result.DISCARDED) {
+                pendingPackPrompts = Math.max(0, pendingPackPrompts - 1);
+            }
+            return;
+        }
 
+        // Transactions keep arriving from idle pre-1.21.2 clients, unlike their movement packets
+        if (!isFlying(event.getPacketType()) && event.getPacketType() != PacketType.Play.Client.CLIENT_TICK_END
+                && !isTransaction(event.getPacketType())) return;
+
+        long now = System.currentTimeMillis();
         switch (state) {
             case WAITING -> {
                 if (!enabled || keyToClient.isEmpty() || !isSupported()) {
@@ -147,17 +176,19 @@ public class ClientDetection extends GrimProcessor implements PacketReceiveListe
                     return;
                 }
                 if (!player.getSetbackTeleportUtil().hasAcceptedSpawnTeleport) return;
-                if (++ticks < delayTicks) return;
+                if (waitingSince == 0) waitingSince = now;
+                if (now - waitingSince < delayTicks * 50L) return;
 
                 List<String> keys = new ArrayList<>(keyToClient.keySet());
                 for (int i = 0; i < keys.size(); i += KEYS_PER_PROBE) {
                     pendingProbes.add(keys.subList(i, Math.min(keys.size(), i + KEYS_PER_PROBE)));
                 }
+                placementSince = now;
                 state = State.READY;
             }
-            case READY -> sendNextProbe();
+            case READY -> sendNextProbe(now);
             case AWAITING_RESPONSE -> {
-                if (++ticks > RESPONSE_TIMEOUT_TICKS) {
+                if (now - probeSentAt > RESPONSE_TIMEOUT_MS) {
                     LogUtil.info(player.getName() + " did not answer the client detection probe");
                     if (kickOnNoResponse) {
                         detect("unknown (probe ignored)");
@@ -167,7 +198,7 @@ public class ClientDetection extends GrimProcessor implements PacketReceiveListe
                 }
             }
             case KICK_PENDING -> {
-                if (System.currentTimeMillis() >= kickAt) {
+                if (now >= kickAt) {
                     state = State.DONE;
                     player.disconnect(MessageUtil.miniMessage(MessageUtil.replacePlaceholders(player, pendingKickMessage)));
                 }
@@ -181,7 +212,7 @@ public class ClientDetection extends GrimProcessor implements PacketReceiveListe
         return SERVER_VERSION.isNewerThanOrEquals(ServerVersion.V_1_13);
     }
 
-    private void sendNextProbe() {
+    private void sendNextProbe(long now) {
         if (pendingProbes.isEmpty()) {
             state = State.DONE;
             return;
@@ -192,16 +223,23 @@ public class ClientDetection extends GrimProcessor implements PacketReceiveListe
             return;
         }
 
+        // Opening the sign editor replaces the current screen. Wait while that would close a container the server
+        // still thinks is open, or a resource pack prompt the client would then never answer.
+        if (player.inventory.menu != player.inventory.inventory || pendingPackPrompts > 0) {
+            if (now - placementSince > PLACEMENT_TIMEOUT_MS) state = State.DONE;
+            return;
+        }
+
         Vector3i position = findProbePosition();
         if (position == null) {
             // Retry next tick, the player is probably in a tight space or in a fluid
-            if (++placementAttempts > MAX_PLACEMENT_ATTEMPTS * 20) state = State.DONE;
+            if (now - placementSince > PLACEMENT_TIMEOUT_MS) state = State.DONE;
             return;
         }
 
         currentProbe = pendingProbes.remove(0);
         probePosition = position;
-        ticks = 0;
+        probeSentAt = now;
         state = State.AWAITING_RESPONSE;
 
         StateType originalType = player.compensatedWorld.getBlock(position).getType();
@@ -321,6 +359,7 @@ public class ClientDetection extends GrimProcessor implements PacketReceiveListe
             }
         }
 
+        placementSince = System.currentTimeMillis();
         state = State.READY;
     }
 

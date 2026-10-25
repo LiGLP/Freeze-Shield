@@ -8,6 +8,7 @@ import ac.grim.grimac.checks.type.PacketReceiveListener;
 import ac.grim.grimac.checks.type.RotationListener;
 import ac.grim.grimac.player.GrimPlayer;
 import ac.grim.grimac.utils.anticheat.update.RotationUpdate;
+import ac.grim.grimac.utils.math.GrimMath;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientInteractEntity;
@@ -25,14 +26,17 @@ public class AimA extends Check implements RotationListener, PacketReceiveListen
     private static final Verbose V = Verbose.of("delta={f64}, step={f64}, error={f64}");
 
     private static final int COMBAT_ROTATIONS = 40;
-    // Small rotations are where sensitivity estimation is reliable; large flicks amplify estimation errors
-    private static final double MIN_DELTA = 1;
+    // Small rotations (in mouse steps) are where the grid is reliable; large flicks amplify estimation errors
+    private static final double MIN_DOTS = 2;
     private static final double MAX_DELTA = 20;
     private static final double MAX_GRID_ERROR = 0.15;
     private static final double BUFFER_LIMIT = 8;
+    private static final double STEP_ERROR = 1e-3;
+    private static final double MAX_UNCERTAINTY = 0.15;
 
     private int combatRotations;
     private double buffer;
+    private AimProcessor processor;
 
     public AimA(final GrimPlayer player) {
         super(player);
@@ -53,23 +57,31 @@ public class AimA extends Check implements RotationListener, PacketReceiveListen
         if (combatRotations <= 0) return;
         combatRotations--;
 
-        // Server or vehicle driven rotation changes are not mouse input
+        // Server or vehicle driven rotation changes are not mouse input (boats turn their passengers every tick)
         if (player.packetStateData.lastPacketWasTeleport || player.vehicleData.wasVehicleSwitch
-                || player.packetStateData.horseInteractCausedForcedRotation) {
+                || player.packetStateData.horseInteractCausedForcedRotation || player.inVehicle()) {
             return;
         }
 
-        AimProcessor processor = player.checkManager.get(AimProcessor.class);
+        if (processor == null) processor = player.checkManager.get(AimProcessor.class);
         double step = processor.modeYaw;
-        if (step <= 0) return; // Sensitivity not known yet
+        if (step <= GrimMath.MINIMUM_DIVISOR) return; // Sensitivity not known yet
 
         double delta = rotationUpdate.deltaYawABS();
-        if (delta < MIN_DELTA || delta > MAX_DELTA) return;
+        if (delta > MAX_DELTA) return;
 
         double dots = delta / step;
+        if (dots < MIN_DOTS) return;
+        // The estimated step is only accurate to ~1e-3 degrees (RunningMode groups values that close together),
+        // and the client's float yaw loses precision as it grows. Both errors grow with the number of steps,
+        // so skip rotations where they could push a legit rotation off the grid.
+        double uncertainty = dots * STEP_ERROR / step
+                + (Math.ulp(rotationUpdate.newYaw()) + Math.ulp(rotationUpdate.oldYaw())) / step;
+        if (uncertainty > MAX_UNCERTAINTY) return;
+
         double error = Math.abs(dots - Math.rint(dots));
 
-        if (error > MAX_GRID_ERROR) {
+        if (error > MAX_GRID_ERROR + uncertainty) {
             if (++buffer > BUFFER_LIMIT) {
                 flag(V.write(verbose()).f64(delta).f64(step).f64(error));
             }

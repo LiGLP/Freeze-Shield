@@ -44,6 +44,12 @@ public final class FreezeApiBridge {
         }
     }
 
+    /** @return true if freeze-api is installed and new enough, it may still be disabled */
+    public static boolean isInstalled() {
+        resolve();
+        return queueDiscordJson != null;
+    }
+
     /**
      * Queues a Discord message for the freeze-api bot.
      *

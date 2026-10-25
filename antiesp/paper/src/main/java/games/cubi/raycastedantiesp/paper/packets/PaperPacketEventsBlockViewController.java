@@ -10,6 +10,7 @@ package games.cubi.raycastedantiesp.paper.packets;
 
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
+import games.cubi.raycastedantiesp.paper.RaycastedAntiESP;
 import games.cubi.raycastedantiesp.core.chunks.BlockInfoResolver;
 import games.cubi.raycastedantiesp.packetevents.viewcontrollers.PacketEventsBlockViewController;
 import io.github.retrooper.packetevents.util.SpigotConversionUtil;
@@ -23,7 +24,7 @@ public class PaperPacketEventsBlockViewController extends PacketEventsBlockViewC
 
     public PaperPacketEventsBlockViewController(BlockInfoResolver blockInfoResolver, boolean trackAllBlocks, IntSupplier currentTickSupplier) {
         super(blockInfoResolver, trackAllBlocks, currentTickSupplier);
-        PacketEvents.getAPI().getEventManager().registerListener(this, PacketListenerPriority.HIGHEST);
+        RaycastedAntiESP.registerPacketListener(this, PacketListenerPriority.HIGHEST);
     }
 
     @Override

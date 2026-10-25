@@ -103,6 +103,11 @@ public abstract class PacketEventsBlockViewController implements PacketListener 
             return;
         }
 
+        // Freeze Shield: fake bases and resyncs aren't the server's world, leave them exactly as they are
+        if (GrimSync.isClientOnlyPacket()) {
+            return;
+        }
+
         BlockView blockView = playerData.blockView();
 
         if (event.getPacketType() == PacketType.Play.Server.UNLOAD_CHUNK) {
@@ -164,11 +169,7 @@ public abstract class PacketEventsBlockViewController implements PacketListener 
         List<int[]> blocks = List.copyOf(hiddenBlocks);
         hiddenBlocks.clear();
         User viewer = event.getUser();
-        event.getTasksAfterSend().add(() -> {
-            for (int[] block : blocks) {
-                GrimSync.notifyOnly(viewer, new WrapperPlayServerBlockChange(new Vector3i(block[0], block[1], block[2]), block[3]));
-            }
-        });
+        event.getTasksAfterSend().add(() -> GrimSync.notifyOnlyBlocks(viewer, blocks));
     }
 
     private void handleMultiBlockChange(PacketSendEvent event, BlockView blockView, UUID world, WrapperPlayServerMultiBlockChange packet, Locatable playerLocation, boolean tileChecksEnabled) {

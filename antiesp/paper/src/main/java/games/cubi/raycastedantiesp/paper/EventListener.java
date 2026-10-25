@@ -12,13 +12,11 @@ import com.destroystokyo.paper.event.server.ServerTickEndEvent;
 import com.destroystokyo.paper.event.server.ServerTickStartEvent;
 import games.cubi.logs.Logger;
 import games.cubi.raycastedantiesp.core.entity.EntityBypassRegistry;
-import games.cubi.raycastedantiesp.core.config.ConfigManager;
 import games.cubi.raycastedantiesp.core.players.PlayerRegistry;
 import games.cubi.raycastedantiesp.paper.engine.PaperAsyncEngine;
 import games.cubi.raycastedantiesp.core.players.PlayerData;
 import games.cubi.raycastedantiesp.paper.utils.PaperListener;
 import io.papermc.paper.event.player.PlayerClientLoadedWorldEvent;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -31,7 +29,6 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 
 import java.util.function.IntSupplier;
 
-import static games.cubi.raycastedantiesp.paper.UpdateChecker.checkForUpdates;
 
 public class EventListener extends PaperListener {
     private final org.bukkit.plugin.java.JavaPlugin plugin;
@@ -65,16 +62,13 @@ public class EventListener extends PaperListener {
 
         PlayerData playerData = PlayerRegistry.get().getPlayerData(player.getUniqueId());
         if (playerData == null) {
-            Logger.error("Player joined before packet state was registered. Kicking player=" + player.getName() + " uuid=" + player.getUniqueId(), 1, EventListener.class);
-            player.kick(MiniMessage.miniMessage().deserialize("RaycastedAntiESP failed to initialise your packet state. Please reconnect. Report this issue to the server you are playing on if you are still unable to join."));
+            // Freeze Shield: the anti-ESP is an extra, never kick over it (e.g. players joining through a connection
+            // PacketEvents didn't see the login of); they just aren't covered by it
+            Logger.warning("Player joined before packet state was registered, the anti-ESP won't cover player=" + player.getName() + " uuid=" + player.getUniqueId(), 2, EventListener.class);
             return;
         }
 
-        if (ConfigManager.get().getUpdateConfig().notifyInGame()
-                && player.hasPermission("raycastedantiesp.updatecheck")
-                && (currentTickSupplier.getAsInt() - playerData.getJoinTick() < 10)) { //todo: centralise permission strings to prevent issues when perm names are changed
-            checkForUpdates(plugin, player);
-        }
+        // Freeze Shield: no update check, the bundled anti-ESP is updated with Freeze Shield
 
         boolean hasBypassPermission = player.hasPermission("raycastedantiesp.bypass");
         playerData.setBypassPermission(hasBypassPermission);

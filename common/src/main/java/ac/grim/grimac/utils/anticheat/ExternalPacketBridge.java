@@ -8,6 +8,8 @@ import com.github.retrooper.packetevents.netty.buffer.UnpooledByteBufAllocationH
 import com.github.retrooper.packetevents.netty.channel.ChannelHelper;
 import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.util.EventCreationUtil;
+import com.github.retrooper.packetevents.wrapper.PacketWrapper;
+import io.netty.channel.Channel;
 
 import java.util.Comparator;
 import java.util.List;
@@ -22,6 +24,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 public final class ExternalPacketBridge {
     private static final List<PacketListenerAbstract> LISTENERS = new CopyOnWriteArrayList<>();
+    // Set while Freeze Shield sends client-only blocks (fake bases, resyncs of Grim's own world copy) that the
+    // anti-ESP must not treat as the server's world
+    private static final ThreadLocal<Boolean> SENDING_CLIENT_ONLY = new ThreadLocal<>();
 
     private ExternalPacketBridge() {}
 
@@ -47,15 +52,53 @@ public final class ExternalPacketBridge {
         ChannelHelper.runInEventLoop(channel, () -> process(user, channel, packet));
     }
 
+    /**
+     * Sends a packet normally (Grim's listeners see it as usual), but tells the anti-ESP to leave it alone.
+     * <p>
+     * For blocks that only exist on the client, like fake bases, or that re-send what Grim thinks the client already
+     * has. The anti-ESP would otherwise take them for the real world: hide fake chests as stone, or forget a real
+     * chest it is hiding and never show it again.
+     */
+    public static void sendClientOnly(User user, PacketWrapper<?> packet) {
+        Object channel = user.getChannel();
+        if (channel == null) return;
+
+        // The anti-ESP checks the flag while the packet is encoded, which happens right away on the netty thread
+        Runnable send = () -> {
+            SENDING_CLIENT_ONLY.set(Boolean.TRUE);
+            try {
+                user.sendPacket(packet);
+            } finally {
+                SENDING_CLIENT_ONLY.remove();
+            }
+        };
+        if (((Channel) channel).eventLoop().inEventLoop()) {
+            send.run();
+        } else {
+            ChannelHelper.runInEventLoop(channel, send);
+        }
+    }
+
+    /** Whether the packet being encoded on this thread was sent through {@link #sendClientOnly}. */
+    public static boolean isSendingClientOnly() {
+        return SENDING_CLIENT_ONLY.get() == Boolean.TRUE;
+    }
+
     private static void process(User user, Object channel, byte[] packet) {
         if (GrimAPI.INSTANCE.getPlayerDataManager().getPlayer(user) == null) return;
 
         Object buffer = UnpooledByteBufAllocationHelper.buffer(packet.length);
         try {
             ByteBufHelper.writeBytes(buffer, packet);
-            PacketSendEvent event = EventCreationUtil.createSendEvent(channel, user, null, buffer, false);
+            // true: the packet is in the server's version, like everything Grim's (post-via) listeners normally get.
+            // false would decode it with the client's version, which breaks every client joining through ViaVersion
+            PacketSendEvent event = EventCreationUtil.createSendEvent(channel, user, null, buffer, true);
             for (PacketListenerAbstract listener : LISTENERS) {
-                listener.onPacketSend(event);
+                try {
+                    listener.onPacketSend(event);
+                } catch (Exception e) {
+                    LogUtil.error("Failed to sync an anti-ESP packet (" + event.getPacketType() + ") for " + user.getName(), e);
+                }
             }
             if (event.hasTasksAfterSend()) {
                 for (Runnable task : event.getTasksAfterSend()) {

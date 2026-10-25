@@ -42,6 +42,7 @@ public class PaperTicker extends PaperListener implements Ticker {
 
         entityIDGuard.tick(newTick);
         AsyncEngine engine = RaycastedAntiESP.getEngine();
+        if (engine == null) return; // Freeze Shield: not started yet, or shut down
         if (!engine.markTickRunning()) {
             Logger.info("Skipped starting tick because previous tick is still running. This likely means the server is overloaded.", 6, EventListener.class);
             return;

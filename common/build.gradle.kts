@@ -79,7 +79,10 @@ dependencies {
         isTransitive = false // messes with guava otherwise
     }
 
-    compileOnly(libs.floodgate.api)
+    compileOnly(libs.floodgate.api) {
+        // org.geysermc:common:1.4.3-SNAPSHOT was removed from opencollab; it still supplies guava/gson transitively
+        exclude(group = "org.geysermc", module = "common")
+    }
     compileOnly(libs.viaversion)
     compileOnly(libs.viabackwards)
     compileOnly(libs.netty)

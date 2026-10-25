@@ -29,6 +29,11 @@ public final class FreezeLogs {
         return config().getBooleanElse("freeze-api.enabled", true);
     }
 
+    /** @return true if alerts can go through the freeze-api bot instead of the webhook */
+    public static boolean available() {
+        return enabled() && FreezeApiBridge.isInstalled();
+    }
+
     public static String anticheatChannel() {
         return config().getStringElse("freeze-api.anticheat-channel", "anticheat-log");
     }

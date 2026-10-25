@@ -77,6 +77,7 @@ public class AutoClickerB extends Check {
             }
         } else {
             buffer = Math.max(0, buffer - 1);
+            reward();
         }
     }
 

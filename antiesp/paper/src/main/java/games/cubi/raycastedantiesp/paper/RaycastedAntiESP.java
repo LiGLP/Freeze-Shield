@@ -34,18 +34,28 @@ import games.cubi.raycastedantiesp.paper.utils.PaperTicker;
 
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 
+import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.event.PacketListener;
+import com.github.retrooper.packetevents.event.PacketListenerCommon;
+import com.github.retrooper.packetevents.event.PacketListenerPriority;
+
 import org.bukkit.Bukkit;
+import org.bukkit.event.HandlerList;
+import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
 
 /**
  * Entry point used by Freeze Shield. Freeze Shield loads this class from the embedded anti-ESP jar on Paper 1.21.4+
- * and calls {@link #enable(JavaPlugin, Path, BiConsumer)} from its own onEnable.
+ * and calls {@link #enable(JavaPlugin, Path, BiConsumer, BooleanSupplier)} from its own onEnable.
  */
 public final class RaycastedAntiESP {
     private static ConfigManager config;
@@ -53,6 +63,9 @@ public final class RaycastedAntiESP {
     private static PaperAsyncEngine engine;
     private static JavaPlugin host;
     private static PaperLoggerAdapter loggerAdapter;
+    // Freeze Shield: everything registered on the host plugin, so it can be removed again on disable or a failed start
+    private static final List<PacketListenerCommon> packetListeners = new CopyOnWriteArrayList<>();
+    private static final List<Listener> bukkitListeners = new CopyOnWriteArrayList<>();
 
     public static final boolean isFolia = getClass("io.papermc.paper.threadedregions.RegionizedServer") != null;
 
@@ -70,14 +83,17 @@ public final class RaycastedAntiESP {
      * @param plugin    the Freeze Shield plugin, used for schedulers, listeners and commands
      * @param dataDir   where the anti-ESP keeps its config and logs
      * @param grimSync  receives every packet the anti-ESP sends or changes behind the anticheat's back
+     * @param clientOnlyPacket whether the block packet being encoded on this thread was made up by the anticheat
+     *                         (fake bases, resyncs), so the anti-ESP leaves it alone
      */
-    public static void enable(JavaPlugin plugin, Path dataDir, BiConsumer<Object, byte[]> grimSync) {
+    public static void enable(JavaPlugin plugin, Path dataDir, BiConsumer<Object, byte[]> grimSync, BooleanSupplier clientOnlyPacket) {
         host = plugin;
         java.util.logging.Logger logger = java.util.logging.Logger.getLogger("FreezeShield-AntiESP");
         logger.setParent(plugin.getLogger());
         loggerAdapter = new PaperLoggerAdapter(logger, dataDir.resolve("logs/" + System.currentTimeMillis() + ".log"));
         Core.initialize(loggerAdapter);
         GrimSync.setSink(grimSync);
+        GrimSync.setClientOnlyPacketCheck(clientOnlyPacket);
 
         config = ConfigManager.initialiseConfigManager(dataDir);
 
@@ -116,10 +132,34 @@ public final class RaycastedAntiESP {
     }
 
     public static void disable() {
+        // Stop ticking and packet handling first, the classes are about to go away with the classloader
+        engine = null;
+        for (PacketListenerCommon listener : packetListeners) {
+            try {
+                PacketEvents.getAPI().getEventManager().unregisterListener(listener);
+            } catch (RuntimeException ignored) {
+                // PacketEvents is already shut down
+            }
+        }
+        packetListeners.clear();
+        for (Listener listener : bukkitListeners) {
+            HandlerList.unregisterAll(listener);
+        }
+        bukkitListeners.clear();
         GrimSync.setSink(null);
+        GrimSync.setClientOnlyPacketCheck(null);
         if (loggerAdapter != null) {
             loggerAdapter.forceFlushToFileNow();
         }
+    }
+
+    public static void registerPacketListener(PacketListener listener, PacketListenerPriority priority) {
+        packetListeners.add(PacketEvents.getAPI().getEventManager().registerListener(listener, priority));
+    }
+
+    public static void registerBukkitListener(Listener listener) {
+        Bukkit.getPluginManager().registerEvents(listener, host);
+        bukkitListeners.add(listener);
     }
 
     public static ConfigManager getConfigManager() {

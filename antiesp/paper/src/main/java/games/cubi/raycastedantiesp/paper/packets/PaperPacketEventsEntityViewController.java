@@ -8,8 +8,8 @@
 
 package games.cubi.raycastedantiesp.paper.packets;
 
-import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
+import games.cubi.raycastedantiesp.paper.RaycastedAntiESP;
 import games.cubi.raycastedantiesp.packetevents.viewcontrollers.PacketEventsEntityViewController;
 
 import java.util.function.IntSupplier;
@@ -19,6 +19,6 @@ public class PaperPacketEventsEntityViewController extends PacketEventsEntityVie
 
     public PaperPacketEventsEntityViewController(IntSupplier currentTickSupplier) {
         super(currentTickSupplier);
-        PacketEvents.getAPI().getEventManager().registerListener(this, PacketListenerPriority.HIGHEST);
+        RaycastedAntiESP.registerPacketListener(this, PacketListenerPriority.HIGHEST);
     }
 }

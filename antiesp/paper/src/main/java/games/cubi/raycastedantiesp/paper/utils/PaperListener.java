@@ -14,6 +14,6 @@ import org.bukkit.event.Listener;
 
 public abstract class PaperListener implements Listener {
     public PaperListener() {
-        Bukkit.getPluginManager().registerEvents(this, RaycastedAntiESP.get());
+        RaycastedAntiESP.registerBukkitListener(this);
     }
 }

@@ -5,6 +5,11 @@ import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.world.BlockFace;
 import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
 import com.github.retrooper.packetevents.protocol.world.states.enums.Axis;
+import com.github.retrooper.packetevents.protocol.world.states.enums.East;
+import com.github.retrooper.packetevents.protocol.world.states.enums.North;
+import com.github.retrooper.packetevents.protocol.world.states.enums.Shape;
+import com.github.retrooper.packetevents.protocol.world.states.enums.South;
+import com.github.retrooper.packetevents.protocol.world.states.enums.West;
 import com.github.retrooper.packetevents.protocol.world.states.type.StateType;
 import com.github.retrooper.packetevents.protocol.world.states.type.StateTypes;
 import com.github.retrooper.packetevents.protocol.world.states.type.StateValue;
@@ -21,6 +26,12 @@ import java.util.Map;
  */
 public final class BaseSchematic {
     private static final ClientVersion SERVER_STATE_VERSION = PacketEvents.getAPI().getServerManager().getVersion().toClientVersion();
+    // Rail shapes, each row in clockwise order. Above BUILT_IN, which needs it while being built
+    private static final Shape[][] RAIL_TURNS = {
+            {Shape.NORTH_SOUTH, Shape.EAST_WEST},
+            {Shape.ASCENDING_NORTH, Shape.ASCENDING_EAST, Shape.ASCENDING_SOUTH, Shape.ASCENDING_WEST},
+            {Shape.NORTH_EAST, Shape.SOUTH_EAST, Shape.SOUTH_WEST, Shape.NORTH_WEST}
+    };
 
     private static final Map<Character, StateType> PALETTE = Map.ofEntries(
             Map.entry('.', StateTypes.AIR),
@@ -209,7 +220,12 @@ public final class BaseSchematic {
                     boolean facing = data.get(StateValue.FACING) instanceof BlockFace face && face != BlockFace.UP && face != BlockFace.DOWN;
                     boolean rotation = data.containsKey(StateValue.ROTATION);
                     boolean axis = data.get(StateValue.AXIS) instanceof Axis a && a != Axis.Y;
-                    if (!facing && !rotation && !axis) continue;
+                    // Fences, panes, walls, bars, redstone wire, vines: north/east/south/west connections
+                    boolean sides = data.get(StateValue.NORTH) instanceof North && data.get(StateValue.EAST) instanceof East
+                            && data.get(StateValue.SOUTH) instanceof South && data.get(StateValue.WEST) instanceof West;
+                    // Rails; stair shapes are relative to the stair's facing and don't turn
+                    boolean rail = data.get(StateValue.SHAPE) instanceof Shape shape && turnRail(shape, 1) != shape;
+                    if (!facing && !rotation && !axis && !sides && !rail) continue;
 
                     int[] turns = new int[4];
                     try {
@@ -223,6 +239,15 @@ public final class BaseSchematic {
                             }
                             if (rotation) turnedState.setRotation((state.getRotation() + 4 * turn) & 15);
                             if (axis && (turn & 1) == 1) turnedState.setAxis(state.getAxis() == Axis.X ? Axis.Z : Axis.X);
+                            if (sides) {
+                                // Clockwise order; what was on side i is now on side i + turn
+                                String[] old = {state.getNorth().name(), state.getEast().name(), state.getSouth().name(), state.getWest().name()};
+                                turnedState.setNorth(North.valueOf(old[(4 - turn) & 3]));
+                                turnedState.setEast(East.valueOf(old[(5 - turn) & 3]));
+                                turnedState.setSouth(South.valueOf(old[(6 - turn) & 3]));
+                                turnedState.setWest(West.valueOf(old[(7 - turn) & 3]));
+                            }
+                            if (rail) turnedState.setShape(turnRail(state.getShape(), turn));
                             turns[turn] = turnedState.getGlobalId();
                         }
                     } catch (RuntimeException e) {
@@ -233,5 +258,14 @@ public final class BaseSchematic {
             }
         }
         return rotated;
+    }
+
+    private static Shape turnRail(Shape shape, int turns) {
+        for (Shape[] row : RAIL_TURNS) {
+            for (int i = 0; i < row.length; i++) {
+                if (row[i] == shape) return row[(i + turns) % row.length];
+            }
+        }
+        return shape;
     }
 }
